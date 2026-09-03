@@ -2,7 +2,6 @@
 
 Plataforma web educacional gamificada que combina um jogo de cartas com perguntas e respostas elaboradas por professores.
 
-> **Status:** em desenvolvimento. A documentação atual apresenta a proposta, a arquitetura, os requisitos e o plano de testes; a versão web funcional ainda não foi concluída.
 
 ## Sobre o projeto
 
