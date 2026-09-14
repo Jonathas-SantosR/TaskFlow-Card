@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Protótipo web do TaskFlowCards para gerenciamento de salas e alunos.">
+  <title>TaskFlowCards Web</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <!-- Cabeçalho compartilhado pelos dois módulos. -->
+  <header class="topbar">
+    <div class="brand" aria-label="TaskFlowCards">
+      <span class="brand-shadow">TASKFLOWCARDS</span>
+      <span class="brand-main">TASKFLOWCARDS</span>
+      <small>Versão Eduacacional <span>/</span> WEB</small>
+    </div>
+
+    <nav class="tabs" aria-label="Módulos do sistema">
+      <button class="tab active" type="button" data-target="rooms">Salas</button>
+      <button class="tab" type="button" data-target="students">Alunos</button>
+    </nav>
+
+    <div class="build"><span class="live-dot"></span> WEB BETA</div>
+  </header>
+
+  <div class="pulse-line" aria-hidden="true">
+    <span></span><i></i><span></span>
+  </div>
+
+  <main>
+    <!-- Módulo de salas: listagem à esquerda e formulário à direita. -->
+    <section class="module active" data-module="rooms" aria-labelledby="rooms-title">
+      <aside class="browser-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">GERENCIAMENTO</p>
+            <h1 id="rooms-title">Salas <span id="rooms-count">0</span></h1>
+          </div>
+          <button class="primary compact" type="button" data-action="new-room">+ Nova sala</button>
+        </div>
+
+        <label class="search-box">
+          <span class="sr-only">Buscar sala</span>
+          <input id="room-search" type="search" maxlength="60" placeholder="Buscar por nome, código ou descrição">
+          <span aria-hidden="true">⌕</span>
+        </label>
+
+        <div class="filters" id="room-filters" aria-label="Filtrar salas por status">
+          <button class="filter active" type="button" data-status="">Todas</button>
+          <button class="filter" type="button" data-status="ABERTA">Abertas</button>
+          <button class="filter" type="button" data-status="FECHADA">Fechadas</button>
+        </div>
+
+        <div class="record-list" id="room-list" aria-live="polite"></div>
+        <div class="list-footer">
+          <button class="outline small" type="button" data-action="refresh-rooms">Atualizar</button>
+          <div class="pagination">
+            <button type="button" data-action="previous-rooms" aria-label="Página anterior">‹</button>
+            <span id="room-page">1 / 1</span>
+            <button type="button" data-action="next-rooms" aria-label="Próxima página">›</button>
+          </div>
+        </div>
+      </aside>
+
+      <article class="editor-panel">
+        <div class="editor-heading">
+          <div>
+            <p class="eyebrow" id="room-detail">NOVO CADASTRO</p>
+            <h2 id="room-form-title">Nova sala</h2>
+          </div>
+          <span class="unsaved" id="room-unsaved" hidden>Não salvo</span>
+        </div>
+
+        <form id="room-form" novalidate>
+          <label>Nome da sala
+            <input id="room-name" name="nome" type="text" minlength="1" maxlength="40" required>
+          </label>
+          <label>Descrição
+            <textarea id="room-description" name="descricao" maxlength="120" rows="3"></textarea>
+          </label>
+
+          <fieldset>
+            <legend>Modo</legend>
+            <div class="choice-grid three">
+              <label><input type="radio" name="modo" value="CLASSICO" checked><span class="blue">Clássico</span></label>
+              <label><input type="radio" name="modo" value="RITMO"><span class="yellow">Ritmo</span></label>
+              <label><input type="radio" name="modo" value="CAOS"><span class="red">Caos</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Status</legend>
+            <div class="choice-grid two">
+              <label><input type="radio" name="status" value="ABERTA" checked><span class="green">Aberta</span></label>
+              <label><input type="radio" name="status" value="FECHADA"><span class="red">Fechada</span></label>
+            </div>
+          </fieldset>
+
+          <p class="timestamps" id="room-timestamps"></p>
+          <div class="form-actions">
+            <button class="primary" type="submit" id="room-save">Criar sala</button>
+            <button class="outline" type="button" data-action="cancel-room">Cancelar</button>
+            <button class="danger" type="button" data-action="delete-room" disabled>Excluir</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <!-- Módulo de alunos: usa a mesma organização visual do módulo de salas. -->
+    <section class="module" data-module="students" aria-labelledby="students-title" hidden>
+      <aside class="browser-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">GERENCIAMENTO</p>
+            <h1 id="students-title">Alunos <span id="students-count">0</span></h1>
+          </div>
+          <button class="primary compact" type="button" data-action="new-student">+ Novo aluno</button>
+        </div>
+
+        <label class="search-box">
+          <span class="sr-only">Buscar aluno</span>
+          <input id="student-search" type="search" maxlength="100" placeholder="Buscar por nome, matrícula ou e-mail">
+          <span aria-hidden="true">⌕</span>
+        </label>
+
+        <div class="filters" id="student-filters" aria-label="Filtrar alunos por status">
+          <button class="filter active" type="button" data-status="">Todos</button>
+          <button class="filter" type="button" data-status="ATIVO">Ativos</button>
+          <button class="filter" type="button" data-status="BLOQUEADO">Bloqueados</button>
+        </div>
+
+        <div class="record-list" id="student-list" aria-live="polite"></div>
+        <div class="list-footer">
+          <button class="outline small" type="button" data-action="refresh-students">Atualizar</button>
+          <div class="pagination">
+            <button type="button" data-action="previous-students" aria-label="Página anterior">‹</button>
+            <span id="student-page">1 / 1</span>
+            <button type="button" data-action="next-students" aria-label="Próxima página">›</button>
+          </div>
+        </div>
+      </aside>
+
+      <article class="editor-panel">
+        <div class="editor-heading">
+          <div>
+            <p class="eyebrow" id="student-detail">NOVO CADASTRO</p>
+            <h2 id="student-form-title">Novo aluno</h2>
+          </div>
+          <span class="unsaved" id="student-unsaved" hidden>Não salvo</span>
+        </div>
+
+        <form id="student-form" novalidate>
+          <label>Nome completo
+            <input id="student-name" name="nome" type="text" minlength="2" maxlength="60" required>
+          </label>
+          <div class="form-row">
+            <label>Matrícula / RA
+              <input id="student-registration" name="matricula" type="text" minlength="2" maxlength="20" required>
+            </label>
+            <label>E-mail
+              <input id="student-email" name="email" type="email" maxlength="100" required>
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>Status</legend>
+            <div class="choice-grid two">
+              <label><input type="radio" name="status" value="ATIVO" checked><span class="green">Ativo</span></label>
+              <label><input type="radio" name="status" value="BLOQUEADO"><span class="red">Bloqueado</span></label>
+            </div>
+          </fieldset>
+
+          <p class="timestamps" id="student-timestamps"></p>
+          <div class="form-actions">
+            <button class="primary" type="submit" id="student-save">Cadastrar aluno</button>
+            <button class="outline" type="button" data-action="cancel-student">Cancelar</button>
+            <button class="danger" type="button" data-action="delete-student" disabled>Excluir</button>
+          </div>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <!-- Região acessível para mensagens de sucesso e validação. -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
