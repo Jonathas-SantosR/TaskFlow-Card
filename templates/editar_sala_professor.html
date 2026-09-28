@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Editar {{ sala.nome }} · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">CRUD DE SALAS</p>
+  <h1>Editar {{ sala.nome }}</h1>
+  <p>Código da sala: <strong>{{ sala.codigo }}</strong></p>
+  <p>Alterar a seleção reinicia a rodada, as respostas e o placar desta sala.</p>
+</section>
+<form method="post" class="painel formulario medio">
+  {{ csrf_input(csrf) }}
+  <label class="campo">
+    <span>Nome da sala</span>
+    <input name="nome" value="{{ sala.nome }}" minlength="3" maxlength="80" required>
+  </label>
+  <h2>Questões da sala</h2>
+  <div class="lista-questoes-sala">
+    {% for questao in questoes %}
+      <label class="questao-selecao">
+        <input type="checkbox" name="questoes" value="{{ questao.id }}" {% if questao.id in questoes_ids %}checked{% endif %}>
+        <span><strong>#{{ questao.id }} · {{ questao.tema }}</strong><small>{{ questao.dificuldade }} · {{ questao.enunciado }}</small></span>
+      </label>
+    {% endfor %}
+  </div>
+  <p class="dica">As questões serão executadas na ordem exibida.</p>
+  <div class="acoes">
+    <button class="botao sucesso" type="submit">Salvar alterações</button>
+    <a class="botao" href="{{ url_for('salas_professor') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

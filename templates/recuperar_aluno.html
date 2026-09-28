@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block titulo %}Recuperar acesso · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">RECUPERAÇÃO</p><h1>Senha do aluno</h1></section>
+<section class="painel mensagem-grande"><h2>Peça ao professor uma nova senha temporária</h2><p>Por segurança, a matrícula sozinha não permite redefinir a senha. O professor seleciona a conta em Gerenciar alunos e cria uma nova senha. No próximo login, você deverá trocá-la.</p><a class="botao" href="{{ url_for('login', perfil='aluno') }}">Ir para o login</a></section>
+{% endblock %}

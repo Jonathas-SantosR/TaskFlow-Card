@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Multijogador On-line · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">MODO ON-LINE</p>
+  <h1>Multijogador</h1>
+  <p>Digite o código fornecido pelo professor para entrar na partida.</p>
+</section>
+<section>
+  <form method="post" class="painel formulario medio">
+    {{ csrf_input(csrf) }}
+    <h2>Entrar em uma sala</h2>
+    <label class="campo">Código da sala
+      <input name="codigo" minlength="6" maxlength="6" autocomplete="off" required placeholder="ABC123">
+    </label>
+    <button class="botao amarelo largura-total" type="submit">Entrar pelo código</button>
+  </form>
+</section>
+{% endblock %}

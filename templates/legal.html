@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block titulo %}Termos de Uso e Política de Privacidade · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">DOCUMENTOS LEGAIS · VERSÃO 2026-09-V2</p>
+  <h1>Termos de Uso e Política de Privacidade</h1>
+  <p>Documentos específicos da segunda versão acadêmica do TaskFlowCards.</p>
+</section>
+
+<nav class="painel indice-legal" aria-label="Índice dos documentos">
+  <a class="botao" href="#termos">Termos de Uso</a>
+  <a class="botao" href="#privacidade">Política de Privacidade</a>
+  <a class="botao" href="#direitos">Direitos do titular</a>
+</nav>
+
+<section id="termos" class="painel documento-legal">
+  <h2>Termo de Uso e Aceite</h2>
+  <p><strong>Finalidade.</strong> O TaskFlowCards é um protótipo acadêmico para atividades pedagógicas gamificadas. Ele não substitui a avaliação, a orientação ou a decisão do professor.</p>
+  <p><strong>Perfis e responsabilidades.</strong> O professor responsável administra estudantes, questões, salas, desempenho e auditoria. O aluno acessa apenas o próprio perfil, suas partidas e seu desempenho. Cada pessoa deve usar sua própria credencial e proteger sua senha.</p>
+  <p><strong>Conteúdo pedagógico e IA.</strong> Questões geradas ou adaptadas pelo Gemini são rascunhos. O professor deve revisar o conteúdo antes de liberá-lo. É proibido inserir nomes, e-mails, telefones, documentos, matrículas ou outros dados pessoais nos campos enviados à IA.</p>
+  <p><strong>Uso acadêmico.</strong> Durante a avaliação, devem ser utilizados dados fictícios. Uso real em escola exige definição institucional do controlador, canal de atendimento, regras para menores, infraestrutura segura e revisão jurídica.</p>
+  <p><strong>Aceite.</strong> Ao marcar a caixa de aceite no cadastro ou no primeiro acesso, o usuário concorda com estes termos e com a política abaixo. O sistema registra a versão aceita e a data do aceite.</p>
+</section>
+
+<section id="privacidade" class="painel documento-legal">
+  <h2>Política de Privacidade</h2>
+  <p><strong>Responsável no protótipo.</strong> Equipe acadêmica do projeto TaskFlowCards, acompanhada pelo professor orientador. Solicitações devem ser apresentadas ao professor responsável pelos canais institucionais da UMC.</p>
+  <div class="tabela-responsiva">
+    <table class="tabela-legal">
+      <thead><tr><th>Dados tratados</th><th>Finalidade e acesso</th><th>Proteção</th><th>Retenção</th></tr></thead>
+      <tbody>
+        <tr><td>Nome e e-mail do professor</td><td>Identificação, login e administração; acesso do próprio professor e da aplicação.</td><td>Criptografia Fernet e índice HMAC para busca.</td><td>Até anonimização ou exclusão da conta.</td></tr>
+        <tr><td>Nome e matrícula do aluno</td><td>Identificação, login e gestão pedagógica; acesso do aluno e do professor.</td><td>Criptografia Fernet e índice HMAC para busca.</td><td>Até anonimização ou exclusão pelo titular ou professor.</td></tr>
+        <tr><td>Hash e salt de senha e recuperação</td><td>Autenticação e recuperação de acesso; usados somente pelo mecanismo de segurança.</td><td>PBKDF2-HMAC-SHA256; a senha em texto puro não é armazenada.</td><td>Enquanto a credencial existir.</td></tr>
+        <tr><td>Questões, alternativas, gabarito e feedback</td><td>Conteúdo das partidas; professor administra e alunos visualizam durante o jogo.</td><td>Controle de acesso por perfil.</td><td>Até exclusão pelo professor.</td></tr>
+        <tr><td>Resposta, acerto, modo, dificuldade, pontos e horário</td><td>Feedback e acompanhamento do desempenho; acesso do aluno e do professor.</td><td>Vínculo por identificador interno, sem repetir nome ou matrícula.</td><td>Enquanto vinculados à conta; o vínculo é removido na saída.</td></tr>
+        <tr><td>Perfil, ação, recurso, IDs internos e horário</td><td>Rastreabilidade e auditoria; consulta restrita ao professor.</td><td>O log não copia dados pessoais e novos eventos recebem assinatura assimétrica Ed25519.</td><td>Até 90 dias.</td></tr>
+        <tr><td>Tema, dificuldade e texto pedagógico</td><td>Geração, adaptação e narração opcionais pelo Gemini.</td><td>Filtro preventivo de padrões pessoais e revisão humana.</td><td>Áudio não persistido; rascunho só é salvo após decisão do professor.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Compartilhamento com o Google Gemini</h3>
+  <p>A integração externa é opcional. Quando usada, o conteúdo pedagógico é enviado ao Google pela API Gemini. Nome, e-mail, matrícula, senha, documentos e dados de desempenho não devem ser enviados. O processamento pode ocorrer fora do ambiente local conforme as condições do provedor.</p>
+
+  <h3>Medidas de segurança</h3>
+  <p>O sistema aplica autenticação individual, autorização no servidor, hash lento de senhas, criptografia autenticada dos identificadores pessoais, assinatura Ed25519 dos novos eventos de auditoria, proteção CSRF, cookies de sessão HttpOnly e bloqueio temporário após tentativas de login.</p>
+
+  <h3>Crianças e adolescentes</h3>
+  <p>Esta entrega deve usar dados fictícios. Antes de qualquer uso real com menores, a instituição deverá definir a base legal, a participação dos responsáveis quando aplicável, o canal de atendimento e as medidas de proteção adequadas.</p>
+</section>
+
+<section id="direitos" class="painel documento-legal">
+  <h2>Direitos do titular e saída do sistema</h2>
+  <p>O usuário autenticado pode consultar os dados apresentados em sua área e solicitar ao professor responsável acesso ou correção das informações cadastrais. Funcionalidades institucionais de portabilidade e atendimento devem ser definidas antes do uso real.</p>
+  <p>Em <strong>Minha conta / Privacidade e saída</strong>, professor e aluno podem:</p>
+  <ul>
+    <li><strong>anonimizar</strong> nome e identificador de forma irreversível, bloquear a credencial, retirar o aceite e desvincular respostas e auditoria;</li>
+    <li><strong>excluir definitivamente</strong> cadastro, credencial e aceite, removendo ou desvinculando os registros associados.</li>
+  </ul>
+  <p>As duas operações exigem a senha atual e confirmação escrita, encerram imediatamente a sessão e preservam somente eventos técnicos sem identificação pessoal pelo prazo de auditoria.</p>
+</section>
+{% endblock %}

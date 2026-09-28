@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo %}
+{% block titulo %}Privacidade e saída · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">MINHA CONTA</p>
+  <h1>Privacidade e saída</h1>
+  <p>Você controla a permanência dos seus dados pessoais no sistema.</p>
+</section>
+
+<section class="grade-privacidade">
+  <form class="painel formulario" method="post" data-confirmar="Anonimizar sua conta agora? Esta ação não pode ser desfeita.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="modo" value="ANONIMIZAR">
+    <h2>Anonimizar conta</h2>
+    <p class="dica">Seu nome, e-mail ou matrícula serão substituídos de forma irreversível. A conta será bloqueada e você sairá do sistema.</p>
+    {{ campo('senha', 'Senha atual', 'password', autocomplete='current-password') }}
+    {{ campo('confirmacao', 'Digite ANONIMIZAR para confirmar', autocomplete='off') }}
+    <button class="botao amarelo largura-total" type="submit">Solicitar anonimização</button>
+  </form>
+
+  <form class="painel formulario" method="post" data-confirmar="Excluir definitivamente sua conta? Esta ação não pode ser desfeita.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="modo" value="EXCLUIR">
+    <h2>Exclusão definitiva</h2>
+    <p class="dica">Seu cadastro, credencial e aceite serão apagados. As referências na auditoria serão desvinculadas e você sairá do sistema.</p>
+    {{ campo('senha', 'Senha atual', 'password', autocomplete='current-password') }}
+    {{ campo('confirmacao', 'Digite EXCLUIR para confirmar', autocomplete='off') }}
+    <button class="botao perigo-borda largura-total" type="submit">Solicitar exclusão definitiva</button>
+  </form>
+</section>
+
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block titulo %}Painel do professor · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Painel administrativo</h1><p>Gerencie acessos e recursos pedagógicos.</p></section>
+<section class="grade-menu">
+  <a class="cartao-menu categoria-jogo" href="{{ url_for('salas_professor') }}"><strong>Salas on-line</strong><span>Criar, editar e acompanhar partidas</span></a>
+  <a class="cartao-menu categoria-conteudo" href="{{ url_for('questoes') }}"><strong>Banco de questões</strong><span>Cadastrar e liberar conteúdo</span></a>
+  <a class="cartao-menu categoria-jogo" href="{{ url_for('desempenho') }}"><strong>Desempenho</strong><span>Acompanhar respostas e pontos</span></a>
+  <a class="cartao-menu categoria-conteudo" href="{{ url_for('ia') }}"><strong>Questão com IA</strong><span>Gerar rascunho pedagógico</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('alunos') }}"><strong>Alunos</strong><span>Cadastrar e administrar contas</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('auditoria') }}"><strong>Auditoria</strong><span>Consultar eventos internos</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('seguranca') }}"><strong>Segurança</strong><span>Criar código para recuperar a senha</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('conta') }}"><strong>Minha conta</strong><span>Anonimização ou saída definitiva</span></a>
+</section>
+{% endblock %}

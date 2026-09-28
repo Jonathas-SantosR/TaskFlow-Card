@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Redefinir senha · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">ALUNO</p><h1>Redefinir senha</h1><p>{{ aluno.nome }} · {{ aluno.identificador }}</p></section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campo('senha', 'Nova senha temporária', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirme a senha temporária', 'password', autocomplete='new-password') }}
+  <div class="acoes"><button class="botao sucesso" type="submit">Salvar</button><a class="botao" href="{{ url_for('alunos') }}">Cancelar</a></div>
+</form>
+{% endblock %}

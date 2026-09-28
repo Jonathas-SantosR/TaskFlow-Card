@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Recuperar senha · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">RECUPERAÇÃO</p><h1>Senha do professor</h1><p>Use o código configurado anteriormente em Segurança.</p></section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campo('email', 'E-mail do professor', 'email', autocomplete='username') }}
+  {{ campo('codigo', 'Código de recuperação', 'password') }}
+  {{ campo('senha', 'Nova senha', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirme a nova senha', 'password', autocomplete='new-password') }}
+  <div class="acoes"><button class="botao sucesso" type="submit">Redefinir</button><a class="botao" href="{{ url_for('login', perfil='professor') }}">Ir para o login</a></div>
+</form>
+{% endblock %}

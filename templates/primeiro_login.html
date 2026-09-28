@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import aceite_legal, campo, csrf_input %}
+{% block titulo %}Primeiro login · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PRIMEIRO LOGIN</p><h1>Ative sua conta</h1><p>Crie sua senha pessoal e aceite os termos para liberar o acesso.</p></section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campo('senha', 'Nova senha — mínimo de 12 caracteres', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirme a nova senha', 'password', autocomplete='new-password') }}
+  {{ aceite_legal() }}
+  <button class="botao sucesso largura-total" type="submit">Aceitar e ativar conta</button>
+  <a class="link perigo" href="{{ url_for('conta') }}">Privacidade e saída</a>
+</form>
+{% endblock %}

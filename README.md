@@ -1,187 +1,257 @@
-# TaskFlow Card
+# TaskFlowCards Web — Segunda versão
 
-Plataforma web educacional gamificada que combina um jogo de cartas com perguntas e respostas elaboradas por professores.
+Este repositório contém a segunda versão do TaskFlowCards, agora funcionando como uma aplicação web. O projeto foi desenvolvido com Python, Flask, HTML, CSS e JavaScript, usando MySQL 8 como banco de dados.
 
+A proposta continua sendo utilizar perguntas em atividades pedagógicas de uma forma mais dinâmica. Nesta versão, o professor administra os alunos, prepara as questões e cria as salas. Os alunos podem treinar contra o bot ou participar das partidas on-line criadas pelo professor.
 
-## Sobre o projeto
+## O que já está funcionando
 
-O TaskFlow Card transforma momentos de uma partida de cartas em oportunidades de praticar conteúdos acadêmicos. Professores poderão organizar turmas e cadastrar questões, enquanto estudantes participarão de partidas pelo navegador, contra jogadores automatizados ou outros participantes.
+### Acesso e segurança
 
-A proposta usa a competição como apoio à aprendizagem, sem substituir o acompanhamento e as avaliações realizadas pelo professor.
+- login separado para professor e aluno;
+- autorização de acordo com o perfil do usuário;
+- criação do primeiro professor protegida por um código de configuração;
+- troca obrigatória da senha temporária no primeiro acesso do aluno;
+- recuperação da conta do professor por um código definido por ele;
+- bloqueio temporário depois de várias tentativas erradas de login;
+- proteção CSRF nos formulários e cookies de sessão com `HttpOnly`;
+- registro das ações importantes na auditoria.
 
-O projeto foi desenvolvido como trabalho de conclusão do Bacharelado em Sistemas de Informação da Universidade de Mogi das Cruzes (UMC), com previsão de conclusão em 2026.
+### Funções do professor
 
-## Objetivos
+- cadastrar, bloquear, ativar e excluir alunos;
+- criar uma nova senha temporária para um aluno;
+- cadastrar, editar, liberar, pausar e excluir questões;
+- gerar ou adaptar um rascunho de questão com o Google Gemini;
+- solicitar a narração de uma questão com o Gemini Text-to-Speech;
+- acompanhar as respostas, os acertos e os pontos dos alunos;
+- consultar os registros de auditoria;
+- criar, consultar, editar e excluir salas on-line.
 
-O objetivo geral é desenvolver uma plataforma web educacional gamificada que permita:
+Ao criar uma sala, o professor informa um nome, escolhe as questões e compartilha o código gerado com os alunos. As perguntas são apresentadas na ordem escolhida e as rodadas avançam automaticamente quando todos respondem.
 
-- aos professores gerenciar turmas, estudantes, perguntas e respostas;
-- aos estudantes praticar conteúdos em partidas interativas;
-- executar e validar as regras do jogo no servidor;
-- oferecer partidas contra jogadores automatizados e, quando tecnicamente viável, partidas on-line;
-- registrar resultados, participação e estatísticas vinculadas às turmas;
-- avaliar a solução por meio de testes funcionais, de usabilidade, acessibilidade, integração e segurança.
+### Funções do aluno
 
-## Como funciona o jogo
+- criar a própria conta ou utilizar uma conta preparada pelo professor;
+- aceitar os Termos de Uso e a Política de Privacidade no primeiro acesso;
+- jogar no modo Contra Bot;
+- entrar em uma sala on-line utilizando o código enviado pelo professor;
+- receber feedback depois de responder;
+- acompanhar o próprio desempenho;
+- solicitar anonimização ou exclusão definitiva da conta.
 
-1. O estudante acessa a plataforma e entra em uma turma ou partida autorizada.
-2. Cada jogador começa com sete cartas.
-3. Os participantes jogam em turnos sucessivos.
-4. Ao jogar a carta, o participante deve responder a uma questão cadastrada pelo professor.
-5. Em caso de acerto, descarta uma carta adicional; em caso de erro, compra duas cartas.
-6. A mão, o turno e o placar são atualizados.
-7. Vence quem ficar sem cartas primeiro.
+No modo Contra Bot, o sistema evita repetir uma pergunta enquanto ainda houver outra questão ativa que o aluno não tenha respondido naquele ciclo.
 
-Casos como empate, desconexão, reconexão, ausência de perguntas e limite de tempo ainda precisam ser definidos durante a implementação.
+## LGPD e privacidade
 
-## Perfis de usuário
+Os Termos de Uso e a Política de Privacidade podem ser acessados pelo rodapé do sistema a qualquer momento. A página explica quais dados são utilizados, por que são necessários e como o usuário pode exercer seus direitos.
 
-### Professor
+Nome, e-mail e matrícula são criptografados antes de serem armazenados. Senhas e códigos de recuperação não são guardados em texto puro. Professor e aluno também possuem uma área própria para anonimizar ou excluir definitivamente a conta.
 
-- criar e administrar turmas;
-- cadastrar e revisar perguntas, alternativas e explicações;
-- vincular questões a conteúdos ou níveis de dificuldade;
-- gerenciar participantes;
-- consultar desempenho, ranking e estatísticas;
-- revisar qualquer conteúdo sugerido por inteligência artificial antes de publicá-lo.
+A auditoria utiliza IDs internos e não registra senhas, e-mails ou matrículas. Os eventos possuem assinatura digital para ajudar a identificar alterações indevidas.
 
-### Estudante
+## Requisitos
 
-- acessar a plataforma com uma conta autorizada;
-- entrar em turmas e partidas;
-- jogar cartas e responder às questões apresentadas;
-- treinar contra jogadores automatizados;
-- participar de partidas on-line quando o modo multijogador estiver disponível;
-- consultar resultados e ranking permitidos.
+- Python 3.13;
+- MySQL 8 em execução;
+- usuário e senha com acesso ao banco escolhido;
+- conexão com a internet somente para utilizar o Gemini.
 
-## Arquitetura proposta
+O Gemini é opcional. Sem uma chave da API, o cadastro manual de questões, os jogos, os feedbacks e o restante do sistema continuam funcionando normalmente.
 
-```mermaid
-flowchart TD
-    U[Professor ou estudante] --> B[Navegador]
-    B --> F[Frontend web responsivo]
-    F --> A[API autenticada]
-    A --> G[Regras do jogo]
-    A --> D[(Banco de dados relacional)]
-    A --> R[Partidas em tempo real]
-    A -. integração opcional .-> I[Serviço de IA]
+## Como iniciar
+
+1. Verifique se o serviço do MySQL está funcionando.
+2. Abra o arquivo `INICIAR.bat`.
+3. Informe o servidor, a porta, o nome do banco, o usuário e a senha do MySQL. Os valores mostrados entre colchetes podem ser confirmados apenas pressionando Enter.
+4. Se ainda não existir um professor, informe um código no campo **Código do primeiro professor**. Esse mesmo código será solicitado na criação da primeira conta administrativa. Se o professor já existir, deixe esse campo vazio.
+5. Responda se deseja utilizar o Google Gemini. Se escolher `S`, informe a chave criada no Google AI Studio.
+6. Aguarde até o terminal mostrar o endereço:
+
+```text
+http://127.0.0.1:5000
 ```
 
-A solução segue uma arquitetura cliente-servidor:
+O navegador não é aberto automaticamente. Copie o endereço ou digite-o no navegador que preferir. O terminal precisa continuar aberto durante o uso. Para encerrar o servidor, pressione `Ctrl + C`.
 
-- o **frontend** apresenta a interface e envia as ações do usuário;
-- o **backend** concentra autenticação, autorização, regras da partida, validação das jogadas e acesso aos dados;
-- o **servidor** mantém autoridade sobre turnos, cartas, respostas e condições de vitória;
-- o **banco de dados relacional** armazena usuários, turmas, questões, partidas e estatísticas;
-- a **sincronização em tempo real** será usada no modo multijogador;
-- a **integração com IA** é opcional e deve ocorrer somente no backend.
+Na primeira execução, o `INICIAR.bat` cria o ambiente virtual `.venv` e instala as bibliotecas listadas em `requirements.txt`.
 
-### Componentes e tecnologias documentados
+## Como os arquivos de inicialização e teste foram feitos
 
-- frontend compatível com navegadores modernos, usando HTML, CSS e JavaScript;
-- servidor HTTP com rotas REST autenticadas;
-- banco de dados MySQL;
-- sessões protegidas e controles contra CSRF;
-- hash de senhas com PBKDF2;
-- proteção de dados sensíveis com AES-256-GCM;
-- gerenciamento de chaves com RSA-3072 e proteção fornecida pelo ambiente do servidor;
-- API Gemini opcional para apoiar a sugestão de questões.
+Os arquivos `INICIAR.bat`, `INICIAR_MYSQL.ps1` e `TESTAR.bat` são arquivos de texto com comandos do Windows. Eles não são programas compilados e podem ser abertos no VS Code ou no Bloco de Notas.
 
-O framework do backend, a infraestrutura de hospedagem e a tecnologia de comunicação em tempo real ainda não estão definidos na documentação.
+No Explorador de Arquivos, o Windows pode ocultar as extensões. Nesse caso, `INICIAR` é o arquivo `INICIAR.bat`, `INICIAR_MYSQL` é `INICIAR_MYSQL.ps1` e `TESTAR` é `TESTAR.bat`.
 
-## Modelo de dados
+Para criar arquivos desse tipo manualmente:
 
-O modelo apresentado no projeto contempla, entre outros, os seguintes grupos de dados:
+1. Abra a pasta do projeto no VS Code.
+2. Crie um arquivo novo.
+3. Salve usando exatamente a extensão `.bat` ou `.ps1`.
+4. Deixe os arquivos na pasta principal, no mesmo local do `app.py`.
+5. Confira se o Windows não acrescentou `.txt` ao nome. O arquivo precisa se chamar `INICIAR.bat`, e não `INICIAR.bat.txt`.
 
-- usuários, perfis, credenciais e bloqueios de acesso;
-- relação entre responsáveis pelo cadastro e contas cadastradas;
-- turmas e participações;
-- perguntas, alternativas, respostas e explicações;
-- partidas, rodadas, mãos, jogadas e resultados;
-- estatísticas de desempenho;
-- chaves criptográficas;
-- registros de auditoria.
+Os três arquivos trabalham desta forma:
 
-Dados pessoais, perguntas e explicações sensíveis devem ser armazenados de forma protegida. Consultas parametrizadas e restrições de integridade devem reduzir inconsistências e riscos de injeção.
+```text
+INICIAR.bat
+    └── chama INICIAR_MYSQL.ps1
+            └── configura MySQL e Gemini
+                    └── executa app.py
 
-## Requisitos funcionais
+TESTAR.bat
+    └── usa o Python da .venv
+            └── executa os testes da pasta tests
+```
 
-- **RF01:** autenticar professores e estudantes;
-- **RF02:** permitir ao professor gerenciar turmas, participantes, perguntas e respostas;
-- **RF03:** permitir ao estudante ingressar somente em turmas e partidas autorizadas;
-- **RF04:** distribuir sete cartas e controlar os turnos;
-- **RF05:** oferecer partidas contra jogadores automatizados e outros jogadores;
-- **RF06:** sincronizar partidas on-line quando o modo multijogador estiver habilitado;
-- **RF07:** registrar resultados e estatísticas vinculados à turma.
+### Código do `INICIAR.bat`
 
-## Requisitos não funcionais
+```bat
+@echo off
+setlocal
+cd /d "%~dp0"
 
-- **RNF01:** funcionar em navegadores atuais e em diferentes tamanhos de tela;
-- **RNF02:** utilizar HTTPS e autenticação protegida;
-- **RNF03:** validar regras e permissões no servidor;
-- **RNF04:** não expor credenciais, respostas corretas ou cartas dos adversários;
-- **RNF05:** observar a LGPD e as recomendações de acessibilidade do eMAG;
-- **RNF06:** manter registros de erros e evidências de teste suficientes para manutenção e auditoria.
+set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python313\python.exe"
+if not exist "%PYTHON_EXE%" set "PYTHON_EXE=py"
 
-## Segurança e privacidade
+if not exist ".venv\Scripts\python.exe" (
+  echo Criando ambiente virtual...
+  "%PYTHON_EXE%" -3 -m venv .venv 2>nul || "%PYTHON_EXE%" -m venv .venv
+  if errorlevel 1 goto erro
+)
 
-A aplicação deve adotar, no mínimo:
+echo Instalando dependencias...
+".venv\Scripts\python.exe" -m pip install -r requirements.txt
+if errorlevel 1 goto erro
 
-- senhas armazenadas somente como hashes adequados;
-- sessões ou tokens com validade limitada;
-- autorização baseada no perfil do usuário;
-- HTTPS e proteção contra falsificação de requisições;
-- limitação de tentativas de autenticação;
-- validação, pelo servidor, de toda ação recebida;
-- ocultação das respostas corretas e das mãos adversárias até o momento autorizado;
-- proteção das chaves de serviços externos e proibição de credenciais no frontend ou no repositório;
-- coleta apenas dos dados pessoais necessários;
-- registros de auditoria para eventos relevantes;
-- tratamento de dados alinhado aos princípios de finalidade, necessidade, segurança e transparência da LGPD.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0INICIAR_MYSQL.ps1"
+if errorlevel 1 goto erro
+goto fim
 
-## Acessibilidade
+:erro
+echo.
+echo Nao foi possivel iniciar. Confira o Python e a configuracao do MySQL.
+pause
 
-As interfaces devem considerar desde o início:
+:fim
+endlocal
+```
 
-- navegação por teclado;
-- contraste adequado;
-- indicação visível de foco;
-- mensagens de estado compreensíveis;
-- legibilidade das cartas e perguntas;
-- adaptação a computadores, tablets e celulares;
-- recomendações brasileiras de acessibilidade digital do eMAG.
+O `@echo off` evita que todos os comandos sejam repetidos na tela. O `cd /d "%~dp0"` faz o terminal entrar na pasta onde o arquivo está salvo. Depois, o script procura o Python 3.13 e usa o comando `py` como alternativa.
 
-## Plano de testes
+Se a pasta `.venv` ainda não existir, o próprio arquivo cria o ambiente virtual. Em seguida, instala as dependências do `requirements.txt` e chama o script `INICIAR_MYSQL.ps1`. Se alguma etapa falhar, o fluxo vai para `:erro` e mantém a mensagem visível com `pause`.
 
-O plano previsto abrange:
+### Código do `INICIAR_MYSQL.ps1`
 
-- cadastro, autenticação e permissões dos perfis;
-- gerenciamento de turmas e questões;
-- distribuição de cartas, turnos, desafio da quarta carta e vitória;
-- partidas contra jogadores automatizados;
-- sincronização entre navegadores;
-- entradas inválidas e tentativas de acesso não autorizado;
-- exposição indevida de respostas, cartas ou dados pessoais;
-- usabilidade, acessibilidade, integração e segurança.
+```powershell
+$ErrorActionPreference = "Stop"
+$executavel = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$aplicacao = Join-Path $PSScriptRoot "app.py"
 
-Cada caso de teste deverá registrar requisito, preparação, ação, resultado esperado, resultado obtido e evidência. Resultados empíricos só devem ser publicados depois da execução documentada dos testes.
+$hostInformado = Read-Host "Servidor MySQL [127.0.0.1]"
+$portaInformada = Read-Host "Porta MySQL [3306]"
+$bancoInformado = Read-Host "Nome do banco [taskflowcards]"
+$usuarioInformado = Read-Host "Usuário MySQL"
+$senhaSegura = Read-Host "Senha MySQL" -AsSecureString
+$credencial = [System.Net.NetworkCredential]::new("", $senhaSegura)
+$codigoInicial = Read-Host "Código do primeiro professor (deixe vazio se já existe)" -AsSecureString
+$credencialInicial = [System.Net.NetworkCredential]::new("", $codigoInicial)
 
+$env:TASKFLOW_MYSQL_HOST = if ($hostInformado) { $hostInformado } else { "127.0.0.1" }
+$env:TASKFLOW_MYSQL_PORT = if ($portaInformada) { $portaInformada } else { "3306" }
+$env:TASKFLOW_MYSQL_DATABASE = if ($bancoInformado) { $bancoInformado } else { "taskflowcards" }
+$env:TASKFLOW_MYSQL_USER = $usuarioInformado
+$env:TASKFLOW_MYSQL_PASSWORD = $credencial.Password
+if ($credencialInicial.Password) {
+    $env:TASKFLOW_SETUP_CODE = $credencialInicial.Password
+}
 
-## Autores
+$usarGemini = Read-Host "Deseja usar o Google Gemini? [S/N]"
+if ($usarGemini -match '^[Ss]$') {
+    $geminiSegura = Read-Host "Chave do Google AI Studio" -AsSecureString
+    $credencialGemini = [System.Net.NetworkCredential]::new("", $geminiSegura)
+    $env:GEMINI_API_KEY = $credencialGemini.Password
+    $env:GEMINI_MODEL = "gemini-3.5-flash-lite"
+}
 
-- Jonathas Eduardo Santo Ramos
-- José Armando Abrão Boer
+try {
+    Write-Host ""
+    Write-Host "Servidor pronto para iniciar." -ForegroundColor Green
+    Write-Host "O navegador não será aberto automaticamente." -ForegroundColor Cyan
+    & $executavel $aplicacao
+}
+finally {
+    Remove-Item Env:TASKFLOW_MYSQL_HOST -ErrorAction SilentlyContinue
+    Remove-Item Env:TASKFLOW_MYSQL_PORT -ErrorAction SilentlyContinue
+    Remove-Item Env:TASKFLOW_MYSQL_DATABASE -ErrorAction SilentlyContinue
+    Remove-Item Env:TASKFLOW_MYSQL_USER -ErrorAction SilentlyContinue
+    Remove-Item Env:TASKFLOW_MYSQL_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:TASKFLOW_SETUP_CODE -ErrorAction SilentlyContinue
+    Remove-Item Env:GEMINI_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:GEMINI_MODEL -ErrorAction SilentlyContinue
+}
+```
 
-**Orientador:** Prof. Pedro Henrique Miho de Souza  
-**Coorientador:** Prof. Alessandro Aparecido da Silva Hora  
-**Instituição:** Universidade de Mogi das Cruzes — Bacharelado em Sistemas de Informação
+Esse arquivo foi separado porque o PowerShell permite solicitar senhas sem mostrá-las na tela usando `-AsSecureString`. Ele recebe as informações do MySQL e guarda esses valores apenas em variáveis de ambiente do processo.
 
-## Referências principais
+Se o Gemini for ativado, a chave também fica somente no ambiente enquanto o servidor estiver funcionando. O bloco `try` executa o `app.py`. O bloco `finally` remove as variáveis quando o programa termina, mesmo que ocorra algum erro.
 
-- [Lei Geral de Proteção de Dados Pessoais — LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm)
-- [eMAG — Modelo de Acessibilidade em Governo Eletrônico](https://www.gov.br/governodigital/pt-br/acessibilidade-e-usuario/acessibilidade-digital/eMAGv31.pdf)
-- [Cartilha de Segurança para Internet — CERT.br](https://cartilha.cert.br/livro/cartilha-seguranca-internet.pdf)
-- [Base Nacional Comum Curricular — BNCC](https://basenacionalcomum.mec.gov.br/images/BNCC_EI_EF_110518_versaofinal_site.pdf)
-- [HTML Living Standard — WHATWG](https://html.spec.whatwg.org/)
-- [ECMAScript Language Specification — ECMA-262](https://tc39.es/ecma262/)
-- [Gemini API](https://ai.google.dev/api)
+O `INICIAR.bat` chama esse script usando `-ExecutionPolicy Bypass` apenas para aquela execução. Isso evita alterar permanentemente a política do PowerShell do computador.
+
+### Código do `TESTAR.bat`
+
+```bat
+@echo off
+setlocal
+cd /d "%~dp0"
+if not exist ".venv\Scripts\python.exe" (
+  echo Execute INICIAR.bat primeiro.
+  pause
+  exit /b 1
+)
+".venv\Scripts\python.exe" -B -m unittest -v
+pause
+endlocal
+```
+
+O `TESTAR.bat` verifica primeiro se o ambiente virtual já foi criado. Depois utiliza o Python da própria `.venv` para executar o `unittest`. A opção `-B` impede a criação de arquivos de cache durante os testes e `-v` mostra o nome e o resultado de cada teste. O `pause` deixa a janela aberta para que o resultado possa ser lido.
+
+Esses arquivos não guardam a senha do MySQL nem a chave do Gemini. As informações são solicitadas a cada inicialização e permanecem somente enquanto o processo estiver aberto.
+
+## Banco de dados
+
+A aplicação utiliza somente MySQL 8 durante a execução. As tabelas são criadas e atualizadas automaticamente quando o projeto inicia. Elas utilizam InnoDB e `utf8mb4`.
+
+O SQLite aparece apenas nos bancos temporários dos testes automatizados; ele não é uma opção de banco para executar o sistema.
+
+A chave usada para criptografar os dados fica em `data/.data_key`. As chaves da assinatura da auditoria ficam em `data/.audit_private.pem` e `data/.audit_private.pub`. Esses arquivos não devem ser enviados ao GitHub. Para não perder o acesso aos dados criptografados, o backup do MySQL deve ser acompanhado das chaves.
+
+Mais informações estão em `documentacao/MYSQL.md`.
+
+## Criptografia utilizada
+
+- Fernet para criptografar nome, e-mail e matrícula;
+- HMAC para criar índices de busca de login que não revelam o identificador;
+- PBKDF2-HMAC-SHA256 com salt para senhas e códigos de recuperação;
+- Ed25519 para assinar os eventos da auditoria e detectar adulterações.
+
+Essas proteções cuidam dos dados armazenados. Em uma publicação real, ainda seria necessário utilizar HTTPS/TLS e manter as chaves em um local seguro.
+
+## Integração com o Gemini
+
+A integração com o Google Gemini é utilizada para gerar e adaptar questões e, quando disponível, produzir a narração. O professor sempre deve revisar o conteúdo antes de liberá-lo para os alunos.
+
+A chave fica somente no ambiente do servidor e não é colocada no código ou no navegador. A documentação técnica está em `documentacao/INTEGRACAO_GEMINI.md`.
+
+## Estrutura principal
+
+```text
+app.py                 ponto de entrada da aplicação
+INICIAR.bat            inicializador principal
+INICIAR_MYSQL.ps1      configuração interna usada pelo inicializador
+requirements.txt       dependências do projeto
+taskflow/              domínio, serviços, segurança, banco e Gemini
+templates/             páginas HTML com Jinja
+static/                estilos e JavaScript
+tests/                 testes automatizados
+documentacao/          documentação técnica e de privacidade
+```

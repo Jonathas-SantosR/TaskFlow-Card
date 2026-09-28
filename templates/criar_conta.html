@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import aceite_legal, campo, csrf_input %}
+{% block titulo %}Criar conta {{ perfil|title }} · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">PRIMEIRO ACESSO</p>
+  <h1>Criar conta de {{ perfil|lower }}</h1>
+  <p>Informe seus dados e aceite os documentos legais para ativar a conta.</p>
+</section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campo('nome', 'Nome') }}
+  {{ campo('identificador', 'E-mail do professor' if perfil == 'PROFESSOR' else 'Matrícula / RA', autocomplete='username') }}
+  {% if perfil == 'PROFESSOR' %}
+    {{ campo('codigo_configuracao', 'Código de configuração do professor', 'password', autocomplete='off') }}
+    <p class="ajuda">Definido pelo responsável no servidor pela variável TASKFLOW_SETUP_CODE.</p>
+  {% endif %}
+  {{ campo('senha', 'Senha', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirmar senha', 'password', autocomplete='new-password') }}
+  {{ aceite_legal() }}
+  <div class="acoes">
+    <button class="botao sucesso" type="submit">Criar conta</button>
+    <a class="botao" href="{{ url_for('login', perfil=perfil|lower) }}">Já tenho conta</a>
+  </div>
+</form>
+{% endblock %}

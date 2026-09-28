@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Alunos · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Gerenciar alunos</h1><p>Cadastre uma senha temporária. O aluno deverá aceitar os termos no primeiro acesso para ativar a conta.</p></section>
+<div class="duas-colunas">
+  <section class="painel">
+    <div class="titulo-painel"><h2>Alunos</h2><span>{{ alunos|length }}</span></div>
+    {% if alunos %}
+      <div class="lista-alunos">
+      {% for aluno in alunos %}
+        <article class="linha-aluno">
+          <div><strong>{{ aluno.nome }}</strong><span>{{ aluno.identificador }}</span></div>
+          <span class="status {{ 'ativo' if aluno.ativo else 'bloqueado' }}">{{ 'Ativo' if aluno.ativo else 'Bloqueado' }}</span>
+          <div class="acoes-linha">
+            <form method="post" action="{{ url_for('alterar_status_aluno', aluno_id=aluno.id) }}">{{ csrf_input(csrf) }}<button class="link" type="submit">{{ 'Bloquear' if aluno.ativo else 'Ativar' }}</button></form>
+            <a class="link" href="{{ url_for('reset_aluno', aluno_id=aluno.id) }}">Nova senha</a>
+            <form method="post" action="{{ url_for('excluir_aluno', aluno_id=aluno.id) }}" data-confirmar="Excluir {{ aluno.nome }}?">{{ csrf_input(csrf) }}<button class="link perigo" type="submit">Excluir</button></form>
+          </div>
+        </article>
+      {% endfor %}
+      </div>
+    {% else %}<p class="vazio">Nenhum aluno cadastrado.</p>{% endif %}
+  </section>
+  <form class="painel formulario" method="post">
+    <h2>Novo aluno</h2>{{ csrf_input(csrf) }}
+    {{ campo('nome', 'Nome do aluno', autocomplete='name') }}
+    {{ campo('matricula', 'Matrícula / RA') }}
+    {{ campo('senha', 'Senha temporária', 'password', autocomplete='new-password') }}
+    {{ campo('confirmacao', 'Confirme a senha', 'password', autocomplete='new-password') }}
+    <button class="botao sucesso largura-total" type="submit">Cadastrar</button>
+  </form>
+</div>
+{% endblock %}

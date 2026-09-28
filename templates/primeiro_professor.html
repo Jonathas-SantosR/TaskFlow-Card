@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import aceite_legal, campo, csrf_input %}
+{% block titulo %}Primeiro professor · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PRIMEIRO ACESSO</p><h1>Cadastre o professor responsável</h1><p>Essa conta terá acesso administrativo.</p></section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campo('nome', 'Nome do professor', autocomplete='name') }}
+  {{ campo('email', 'E-mail', 'email', autocomplete='email') }}
+  {{ campo('senha', 'Senha — mínimo de 12 caracteres', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirme a senha', 'password', autocomplete='new-password') }}
+  {{ aceite_legal() }}
+  <div class="acoes"><button class="botao sucesso" type="submit">Cadastrar e entrar</button></div>
+</form>
+{% endblock %}

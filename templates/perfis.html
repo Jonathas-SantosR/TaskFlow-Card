@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block titulo %}Entrar · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">ACESSO</p><h1>Escolha seu perfil</h1><p>Cada perfil possui permissões próprias.</p></section>
+<section class="grade-perfis">
+  <a class="cartao-perfil" href="{{ url_for('login', perfil='professor') }}"><strong>Professor</strong><span>E-mail e senha</span></a>
+  <a class="cartao-perfil amarelo" href="{{ url_for('login', perfil='aluno') }}"><strong>Aluno</strong><span>Matrícula e senha</span></a>
+</section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block titulo %}Desempenho da turma · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Desempenho da turma</h1><p>Indicadores básicos das respostas registradas.</p></section>
+<section class="painel tabela-responsiva">
+  <table><thead><tr><th>Aluno</th><th>Matrícula</th><th>Respostas</th><th>Acertos</th><th>Aproveitamento</th><th>Pontos</th></tr></thead><tbody>
+    {% for aluno, desempenho in resultados %}
+      <tr><td>{{ aluno.nome }}</td><td>{{ aluno.identificador }}</td><td>{{ desempenho.total }}</td><td>{{ desempenho.acertos }}</td><td>{{ desempenho.percentual }}%</td><td>{{ desempenho.pontos }}</td></tr>
+    {% else %}
+      <tr><td colspan="6">Ainda não há respostas registradas.</td></tr>
+    {% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Questão com IA · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">GOOGLE AI STUDIO</p><h1>Questão com Gemini</h1><p>O professor deve revisar todo conteúdo gerado.</p></section>
+<form class="painel formulario largo" method="post" data-processando="Gerando rascunho…">
+  {{ csrf_input(csrf) }}
+  {{ campo('tema', 'Tema pedagógico — sem dados pessoais', valor=tema) }}
+  <label class="campo"><span>Dificuldade</span><select name="dificuldade">{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option {% if dificuldade == nivel %}selected{% endif %}>{{ nivel }}</option>{% endfor %}</select></label>
+  <div class="acoes"><button class="botao amarelo" type="submit">Gerar rascunho</button></div>
+</form>
+{% if questao %}
+<section class="painel questao">
+  <h2>{{ questao.enunciado }}</h2>
+  <ol type="A">{% for alternativa in questao.alternativas %}<li class="{{ 'correta' if loop.index0 == questao.indice_correto else '' }}">{{ alternativa }}</li>{% endfor %}</ol>
+  <p><strong>Explicação:</strong> {{ questao.explicacao }}</p>
+  <p><strong>Feedback de acerto:</strong> {{ questao.feedback_acerto }}</p>
+  <p><strong>Feedback de erro:</strong> {{ questao.feedback_erro }}</p>
+  <form method="post" action="{{ url_for('salvar_questao_ia') }}">
+    {{ csrf_input(csrf) }}
+    <input type="hidden" name="tema" value="{{ tema }}"><input type="hidden" name="dificuldade" value="{{ dificuldade }}">
+    <input type="hidden" name="enunciado" value="{{ questao.enunciado }}"><input type="hidden" name="indice_correto" value="{{ questao.indice_correto }}">
+    {% for alternativa in questao.alternativas %}<input type="hidden" name="alternativa_{{ loop.index0 }}" value="{{ alternativa }}">{% endfor %}
+    <input type="hidden" name="explicacao" value="{{ questao.explicacao }}"><input type="hidden" name="feedback_acerto" value="{{ questao.feedback_acerto }}"><input type="hidden" name="feedback_erro" value="{{ questao.feedback_erro }}">
+    <div class="acoes"><button class="botao sucesso" type="submit">Salvar no banco</button><a class="botao" href="{{ url_for('ia') }}">Descartar</a></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

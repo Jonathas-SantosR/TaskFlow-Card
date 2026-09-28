@@ -1,0 +1,12 @@
+{% macro campos_questao(questao=None) %}
+  <label class="campo"><span>Tema</span><input name="tema" maxlength="100" required value="{{ questao.tema if questao else '' }}"></label>
+  <label class="campo"><span>Dificuldade</span><select name="dificuldade">{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option {% if questao and questao.dificuldade == nivel %}selected{% endif %}>{{ nivel }}</option>{% endfor %}</select></label>
+  <label class="campo campo-total"><span>Enunciado</span><textarea name="enunciado" maxlength="500" required>{{ questao.enunciado if questao else '' }}</textarea></label>
+  {% for indice in range(4) %}
+    <label class="campo"><span>Alternativa {{ 'ABCD'[indice] }}</span><input name="alternativa_{{ indice }}" maxlength="180" required value="{{ questao.alternativas[indice] if questao else '' }}"></label>
+  {% endfor %}
+  <label class="campo"><span>Alternativa correta</span><select name="indice_correto">{% for indice in range(4) %}<option value="{{ indice }}" {% if questao and questao.indice_correto == indice %}selected{% endif %}>{{ 'ABCD'[indice] }}</option>{% endfor %}</select></label>
+  <label class="campo campo-total"><span>Explicação pedagógica</span><textarea name="explicacao" maxlength="500" required>{{ questao.explicacao if questao else '' }}</textarea></label>
+  <label class="campo campo-total"><span>Feedback quando acertar</span><textarea name="feedback_acerto" maxlength="500" placeholder="Se ficar vazio, será usada a explicação.">{{ questao.feedback_acerto if questao else '' }}</textarea></label>
+  <label class="campo campo-total"><span>Feedback quando errar</span><textarea name="feedback_erro" maxlength="500" placeholder="Se ficar vazio, será usada a explicação.">{{ questao.feedback_erro if questao else '' }}</textarea></label>
+{% endmacro %}

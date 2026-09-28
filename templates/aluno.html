@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block titulo %}Área do aluno · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">ALUNO</p><h1>Minha área</h1><p>Consulta restrita ao próprio perfil.</p></section>
+<section class="painel ficha"><div><span>Nome</span><strong>{{ usuario_atual.nome }}</strong></div><div><span>Matrícula</span><strong>{{ usuario_atual.identificador }}</strong></div><div><span>Perfil</span><strong>{{ usuario_atual.perfil }}</strong></div><div><span>Status</span><strong class="verde">Ativo</strong></div></section>
+<section class="grade-menu grade-jogo">
+  <a class="cartao-menu sucesso" href="{{ url_for('jogar', modo='bot') }}"><strong>Contra Bot</strong><span>Treinamento individual contra um jogador automatizado</span></a>
+  <a class="cartao-menu amarelo" href="{{ url_for('multijogador') }}"><strong>Multijogador On-line</strong><span>Entre com o código da sala criada pelo professor</span></a>
+</section>
+<section class="painel resumo-desempenho"><strong>{{ desempenho.percentual }}%</strong><span>{{ desempenho.acertos }} acertos em {{ desempenho.total }} respostas · {{ desempenho.pontos }} pontos</span></section>
+<div class="acoes central"><a class="botao" href="{{ url_for('conta') }}">Privacidade e saída</a></div>
+{% endblock %}

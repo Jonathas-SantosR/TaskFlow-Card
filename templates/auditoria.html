@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block titulo %}Auditoria · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">SEGURANÇA</p><h1>Auditoria</h1><p>IDs internos; sem senhas, e-mails ou matrículas.</p></section>
+<section class="painel tabela-responsiva tabela-auditoria" tabindex="0" aria-label="Registros de auditoria com rolagem">
+  <table><thead><tr><th>Data</th><th>Perfil</th><th>Ator</th><th>Evento</th><th>Recurso</th><th>Alvo</th><th>Integridade</th></tr></thead>
+  <tbody>{% for evento in eventos %}<tr><td>{{ evento.ocorrido_em[:16]|replace('T', ' ') }}</td><td>{{ evento.perfil }}</td><td>{{ evento.ator_id or '—' }}</td><td>{{ evento.evento }}</td><td>{{ evento.recurso }}</td><td>{{ evento.alvo_id or '—' }}</td><td>{{ 'Válida' if evento.integridade is sameas true else 'Legado' if evento.integridade is none else 'Alerta' }}</td></tr>{% else %}<tr><td colspan="7">Nenhum evento registrado.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% from '_campos_questao.html' import campos_questao %}
+{% block titulo %}Banco de questões · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Banco de questões</h1><p>Cadastre, revise, adapte e libere conteúdo para as partidas.</p></section>
+<div class="duas-colunas questoes-layout">
+  <section class="painel">
+    <div class="titulo-painel"><h2>Questões</h2><span>{{ questoes|length }}</span></div>
+    <div class="lista-questoes">
+      {% for questao in questoes %}
+        <article class="linha-questao">
+          <div><small>#{{ questao.id }} · {{ questao.tema }} · {{ questao.dificuldade }}</small><strong>{{ questao.enunciado }}</strong></div>
+          <span class="status {{ '' if questao.ativa else 'bloqueado' }}">{{ 'ATIVA' if questao.ativa else 'PAUSADA' }}</span>
+          <div class="acoes-linha">
+            <a class="link" href="{{ url_for('editar_questao', questao_id=questao.id) }}">Editar</a>
+            <form method="post" action="{{ url_for('alternar_questao', questao_id=questao.id) }}">{{ csrf_input(csrf) }}<button class="link" type="submit">{{ 'Pausar' if questao.ativa else 'Liberar' }}</button></form>
+            <form method="post" action="{{ url_for('adaptar_questao', questao_id=questao.id) }}" data-processando="Adaptando…">{{ csrf_input(csrf) }}<select name="dificuldade" aria-label="Nova dificuldade">{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option>{{ nivel }}</option>{% endfor %}</select><button class="link" type="submit">Adaptar com IA</button></form>
+            <form class="formulario-narracao" method="post" action="{{ url_for('narracao_questao', questao_id=questao.id) }}">{{ csrf_input(csrf) }}<button class="link" type="submit">Narrar com Gemini</button></form>
+            <form method="post" action="{{ url_for('excluir_questao', questao_id=questao.id) }}" data-confirmar="Excluir esta questão?">{{ csrf_input(csrf) }}<button class="link perigo" type="submit">Excluir</button></form>
+          </div>
+          <audio class="audio-questao" controls hidden></audio>
+        </article>
+      {% else %}
+        <p class="vazio">Nenhuma questão cadastrada.</p>
+      {% endfor %}
+    </div>
+  </section>
+  <form class="painel formulario formulario-questao" method="post">
+    <h2>Nova questão manual</h2>
+    {{ csrf_input(csrf) }}
+    {{ campos_questao() }}
+    <div class="acoes campo-total"><button class="botao sucesso" type="submit">Salvar e liberar</button><a class="botao amarelo" href="{{ url_for('ia') }}">Criar com IA</a></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Salas on-line · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">PROFESSOR</p>
+  <h1>Salas on-line</h1>
+  <p>Escolha as questões na ordem desejada e compartilhe o código com os alunos.</p>
+</section>
+
+<section class="duas-colunas sala-layout">
+  <form method="post" class="painel formulario">
+    {{ csrf_input(csrf) }}
+    <h2>Criar nova sala</h2>
+    <label class="campo">
+      <span>Nome da sala</span>
+      <input name="nome" minlength="3" maxlength="80" required placeholder="Ex.: Revisão de Matemática">
+    </label>
+    {% if questoes %}
+      <div class="lista-questoes-sala">
+        {% for questao in questoes %}
+          <label class="questao-selecao">
+            <input type="checkbox" name="questoes" value="{{ questao.id }}">
+            <span><strong>#{{ questao.id }} · {{ questao.tema }}</strong><small>{{ questao.dificuldade }} · {{ questao.enunciado }}</small></span>
+          </label>
+        {% endfor %}
+      </div>
+      <p class="dica">As perguntas serão apresentadas na ordem exibida acima.</p>
+      <button class="botao sucesso" type="submit">Criar sala com as perguntas selecionadas</button>
+    {% else %}
+      <p class="dica">Cadastre e libere questões no Banco de questões antes de criar uma sala.</p>
+      <a class="botao" href="{{ url_for('questoes') }}">Ir ao banco de questões</a>
+    {% endif %}
+  </form>
+
+  <aside class="painel">
+    <h2>Salas criadas</h2>
+    <div class="lista-placar">
+      {% for item in salas %}
+        <div>
+          <span><strong>{{ item.sala.nome }}</strong> · {{ item.sala.status|title }}</span>
+          <strong>{{ item.total_alunos }} aluno(s)</strong>
+          <small>Código {{ item.sala.codigo }} · rodada {{ item.sala.rodada }} de {{ item.total_questoes }} questão(ões)</small>
+          <div class="acoes acoes-sala">
+            <a class="botao" href="{{ url_for('editar_sala_professor', codigo=item.sala.codigo) }}">Editar</a>
+            <form method="post" action="{{ url_for('excluir_sala_professor', codigo=item.sala.codigo) }}" data-confirmar="Excluir definitivamente a sala {{ item.sala.codigo }}?">
+              {{ csrf_input(csrf) }}
+              <button class="botao perigo-borda" type="submit">Excluir</button>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <p class="dica">Nenhuma sala criada por este professor.</p>
+      {% endfor %}
+    </div>
+  </aside>
+</section>
+{% endblock %}

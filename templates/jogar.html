@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Contra Bot · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">JOGADOR AUTOMATIZADO</p><h1>Contra Bot</h1><p>Treinamento individual · {{ desempenho.acertos }}/{{ desempenho.total }} acertos · {{ desempenho.pontos }} pontos</p></section>
+{% if questao %}
+<section class="painel questao jogo">
+  <div class="meta-questao"><span>{{ questao.tema }}</span><span>{{ questao.dificuldade }}</span></div>
+  <h2>{{ questao.enunciado }}</h2>
+  {% if resultado %}
+    <ol type="A">{% for alternativa in questao.alternativas %}<li class="{{ 'correta' if loop.index0 == questao.indice_correto else '' }}">{{ alternativa }}</li>{% endfor %}</ol>
+    <div class="resultado {{ 'resultado-correto' if resultado.correta else 'resultado-erro' }}">
+      <strong>{{ 'Acertou!' if resultado.correta else 'Ainda não.' }}</strong>
+      <p>{{ resultado.feedback }}</p>
+      <p>Resposta correta: {{ resultado.alternativa_correta }}{% if resultado.pontos_recebidos %} · +{{ resultado.pontos_recebidos }} ponto(s){% endif %}</p>
+    </div>
+    <div class="resultado resultado-bot">
+      <strong>Resultado do bot</strong>
+      <p>{{ 'O bot acertou' if resultado.bot_acertou else 'O bot errou' }}{% if resultado.pontos_bot %} · +{{ resultado.pontos_bot }} ponto(s){% endif %}</p>
+    </div>
+    <div class="acoes"><a class="botao sucesso" href="{{ url_for('jogar', modo=modo.lower()) }}">Próxima questão</a></div>
+  {% else %}
+    <form method="post" class="formulario respostas">
+      {{ csrf_input(csrf) }}<input type="hidden" name="questao_id" value="{{ questao.id }}">
+      {% for alternativa in questao.alternativas %}
+        <label class="alternativa"><input type="radio" name="alternativa" value="{{ loop.index0 }}" required><span>{{ 'ABCD'[loop.index0] }}. {{ alternativa }}</span></label>
+      {% endfor %}
+      <div class="acoes"><button class="botao sucesso" type="submit">Responder</button><button class="botao formulario-narracao-botao" type="button" data-url="{{ url_for('narracao_questao', questao_id=questao.id) }}" data-csrf="{{ csrf }}">Ouvir questão</button></div>
+      <audio class="audio-questao" controls hidden></audio>
+    </form>
+  {% endif %}
+</section>
+{% else %}
+<section class="painel mensagem-grande"><h2>Banco sem questões ativas</h2><p>Peça ao professor para cadastrar e liberar pelo menos uma questão.</p></section>
+{% endif %}
+{% endblock %}

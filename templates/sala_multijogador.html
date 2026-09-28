@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}{{ sala.nome }} · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<div data-sala-sincronizada
+     {% if todos_responderam and not partida_encerrada %}
+       data-auto-avancar="{{ url_for('proxima_rodada_multijogador', codigo=sala.codigo) }}"
+       data-csrf="{{ csrf }}"
+     {% elif not partida_encerrada %}
+       data-auto-atualizar="1"
+     {% endif %}>
+<section class="cabecalho-pagina">
+  <p class="rotulo">MULTIJOGADOR ON-LINE</p>
+  <h1>{{ sala.nome }}</h1>
+  <p>Código da sala: <strong>{{ sala.codigo }}</strong></p>
+  {% if partida_encerrada %}
+    <p>Partida finalizada · confira o placar final.</p>
+  {% else %}
+    <p>Rodada {{ sala.rodada }} · a sala é sincronizada automaticamente.</p>
+  {% endif %}
+</section>
+
+<section class="duas-colunas sala-layout">
+  <article class="painel questao jogo">
+    <div class="meta-questao"><span>{{ questao.tema }}</span><span>{{ questao.dificuldade }}</span></div>
+    <h2>{{ questao.enunciado }}</h2>
+    {% if minha_resposta %}
+      <ol type="A">{% for alternativa in questao.alternativas %}<li class="{{ 'correta' if loop.index0 == questao.indice_correto else '' }}">{{ alternativa }}</li>{% endfor %}</ol>
+      <div class="resultado {{ 'resultado-correto' if minha_resposta.correta else 'resultado-erro' }}">
+        <strong>{{ 'Acertou!' if minha_resposta.correta else 'Ainda não.' }}</strong>
+        <p>{{ minha_resposta.feedback }}</p>
+        <p>Resposta correta: {{ minha_resposta.alternativa_correta }}{% if minha_resposta.pontos_recebidos %} · +{{ minha_resposta.pontos_recebidos }} ponto(s){% endif %}</p>
+      </div>
+    {% elif pode_responder %}
+      <form method="post" class="formulario respostas">
+        {{ csrf_input(csrf) }}
+        {% for alternativa in questao.alternativas %}
+          <label class="alternativa"><input type="radio" name="alternativa" value="{{ loop.index0 }}" required><span>{{ 'ABCD'[loop.index0] }}. {{ alternativa }}</span></label>
+        {% endfor %}
+        <button class="botao sucesso" type="submit">Responder nesta rodada</button>
+      </form>
+    {% else %}
+      <div class="resultado resultado-bot"><strong>Aguardando outro aluno</strong><p>Compartilhe o código <b>{{ sala.codigo }}</b>. A resposta será liberada quando houver pelo menos dois participantes.</p></div>
+    {% endif %}
+  </article>
+
+  <aside class="painel placar-sala">
+    <h2>Placar</h2>
+    <div class="lista-placar">
+      {% for participante in participantes %}
+        <div><span>{{ participante.nome }}</span><strong>{{ participante.pontos }} pts</strong><small>{{ 'Respondeu' if participante.respondeu else 'Aguardando' }}</small></div>
+      {% endfor %}
+    </div>
+    <div class="acoes">
+      <a class="botao" href="{{ url_for('sala_multijogador', codigo=sala.codigo) }}">Atualizar sala</a>
+      {% if todos_responderam and not partida_encerrada %}
+        <p class="dica" data-contagem-rodada>Próxima rodada em 5 segundos…</p>
+      {% elif partida_encerrada %}
+        <p class="verde"><strong>Partida concluída</strong></p>
+      {% endif %}
+    </div>
+  </aside>
+</section>
+</div>
+{% endblock %}

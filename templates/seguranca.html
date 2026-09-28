@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Segurança · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">SEGURANÇA</p>
+  <h1>Código de recuperação</h1>
+  <p>Use este código para redefinir sua senha caso perca o acesso à conta de professor.</p>
+  <p class="estado {{ 'ok' if configurada else 'pendente' }}">{{ 'Código configurado' if configurada else 'Configuração pendente' }}</p>
+</section>
+<form class="painel formulario medio" method="post">
+  {{ csrf_input(csrf) }}
+  <div class="orientacao-seguranca" aria-labelledby="requisitos-codigo">
+    <strong id="requisitos-codigo">O código precisa ter:</strong>
+    <ul>
+      <li>entre 12 e 128 caracteres;</li>
+      <li>pelo menos uma letra maiúscula;</li>
+      <li>pelo menos um número.</li>
+    </ul>
+  </div>
+  <label class="campo">
+    <span>Novo código de recuperação</span>
+    <input name="codigo" type="password" minlength="12" maxlength="128"
+           pattern="(?=.*[A-Z])(?=.*[0-9]).{12,128}"
+           title="Use de 12 a 128 caracteres, com ao menos uma letra maiúscula e um número."
+           autocomplete="new-password" required>
+  </label>
+  <label class="campo">
+    <span>Confirme o novo código</span>
+    <input name="confirmacao" type="password" minlength="12" maxlength="128"
+           autocomplete="new-password" required>
+  </label>
+  <div class="acoes"><button class="botao sucesso" type="submit">Salvar código</button></div>
+  <p class="dica"><strong>Importante:</strong> guarde o código em local seguro e fora do projeto. Por segurança, ele não poderá ser visualizado depois de salvo.</p>
+</form>
+{% endblock %}

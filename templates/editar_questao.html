@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% from '_campos_questao.html' import campos_questao %}
+{% block titulo %}Editar questão · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">BANCO DE QUESTÕES</p><h1>Editar questão #{{ questao.id }}</h1><p>Revise o conteúdo antes de disponibilizá-lo aos alunos.</p></section>
+<form class="painel formulario formulario-questao centralizado" method="post">
+  {{ csrf_input(csrf) }}
+  {{ campos_questao(questao) }}
+  <div class="acoes campo-total"><button class="botao sucesso" type="submit">Salvar alterações</button><a class="botao" href="{{ url_for('questoes') }}">Cancelar</a></div>
+</form>
+{% endblock %}
