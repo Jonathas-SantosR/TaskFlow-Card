@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block titulo %}Dashboard pedagógica · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">ACOMPANHAMENTO DO PROFESSOR</p><h1>Dashboard pedagógica</h1><p>Desempenho da turma · todos os alunos cadastrados · resultados acumulados</p></section>
+<section class="dashboard-indicadores" aria-label="Indicadores gerais">
+  <article class="painel"><span>Alunos</span><strong>{{ dashboard.total_alunos }}</strong><small>{{ dashboard.com_respostas }} com respostas</small></article>
+  <article class="painel"><span>Participação</span><strong>{{ dashboard.participacao }}%</strong><small>Alunos que responderam</small></article>
+  <article class="painel"><span>Aproveitamento</span><strong>{{ dashboard.aproveitamento }}%</strong><small>Acertos sobre todas as respostas</small></article>
+  <article class="painel"><span>Respostas</span><strong>{{ dashboard.respostas }}</strong><small>{{ dashboard.acertos }} acertos · {{ dashboard.erros }} erros</small></article>
+</section>
+<section class="dashboard-graficos">
+  <article class="painel"><h2>Acertos e erros</h2>
+    {% if dashboard.respostas %}
+      <div class="dashboard-faixa faixa-1"><div><span>Acertos</span><strong>{{ dashboard.acertos }}</strong></div><meter min="0" max="{{ dashboard.respostas }}" value="{{ dashboard.acertos }}" aria-label="{{ dashboard.acertos }} acertos em {{ dashboard.respostas }} respostas">{{ dashboard.acertos }}</meter></div>
+      <div class="dashboard-faixa faixa-3"><div><span>Erros</span><strong>{{ dashboard.erros }}</strong></div><meter min="0" max="{{ dashboard.respostas }}" value="{{ dashboard.erros }}" aria-label="{{ dashboard.erros }} erros em {{ dashboard.respostas }} respostas">{{ dashboard.erros }}</meter></div>
+    {% else %}<p>Aguardando as primeiras respostas para apresentar o gráfico.</p>{% endif %}
+    <p class="dica">Totais reais registrados no treino e nas salas.</p>
+  </article>
+  <article class="painel"><h2>Faixas de desempenho</h2><p>Quantidade de alunos por faixa de acertos.</p>
+    {% for faixa in dashboard.faixas[:3] %}<div class="dashboard-faixa faixa-{{ loop.index }}"><div><span>{{ faixa.nome }}</span><strong>{{ faixa.total }}</strong></div><meter min="0" max="{{ dashboard.com_respostas or 1 }}" value="{{ faixa.total }}" aria-label="{{ faixa.nome }}: {{ faixa.total }} alunos">{{ faixa.total }}</meter></div>{% endfor %}
+  </article>
+  <article class="painel"><h2>Sinais para o professor</h2>
+    {% if not dashboard.total_alunos %}<p>Nenhum aluno cadastrado. Cadastre alunos para começar o acompanhamento.</p>{% else %}
+    <p><strong>{{ dashboard.faixas[2].total }} aluno(s) precisam de apoio</strong><br>Revise os conteúdos com aproveitamento abaixo de 50%.</p>
+    <p><strong>{{ dashboard.faixas[0].total }} aluno(s) em destaque</strong><br>Aproveitamento igual ou superior a 80%.</p>{% endif %}
+    <small>As faixas apoiam o acompanhamento e não substituem a avaliação do professor. Poucas respostas podem produzir resultados pouco representativos.</small>
+  </article>
+</section>
+<section class="painel dashboard-tabela" tabindex="0" aria-label="Resultados por aluno, tabela com rolagem">
+  <table><caption>Resultados por aluno</caption><thead><tr><th>Aluno</th><th>Respostas</th><th>Acertos</th><th>Erros</th><th>Aproveitamento</th><th>Pontos</th><th>Faixa</th><th>Conta</th></tr></thead><tbody>
+    {% for aluno in dashboard.alunos %}
+      <tr><td>{{ aluno.nome }}</td><td>{{ aluno.total }}</td><td>{{ aluno.acertos }}</td><td>{{ aluno.erros }}</td><td>{{ ('%g'|format(aluno.percentual)) ~ '%' if aluno.total else 'Sem dados' }}</td><td>{{ aluno.pontos }}</td><td>{{ aluno.faixa }}</td><td>{{ 'Ativa' if aluno.ativo else 'Inativa' }}</td></tr>
+    {% else %}
+      <tr><td colspan="8">Nenhum aluno cadastrado.</td></tr>
+    {% endfor %}
+  </tbody></table>
+</section>
+<p class="dica">Resultados acumulados do treino e das salas on-line. Contas inativas permanecem no acompanhamento enquanto cadastradas.</p>
+<div class="acoes"><a class="botao" href="{{ url_for('desempenho') }}">Atualizar dados</a></div>
+{% endblock %}

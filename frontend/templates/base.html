@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}TaskFlowCards{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <header class="topo">
+    <a class="marca" href="{{ url_for('painel_professor') if usuario_atual and usuario_atual.perfil == 'PROFESSOR' else url_for('area_aluno') if usuario_atual else url_for('inicio') }}">
+      <strong>TASKFLOWCARDS</strong><span>JOGO EDUCACIONAL</span>
+    </a>
+    {% if usuario_atual %}
+      <div class="usuario">
+        <span>{{ usuario_atual.nome }} · {{ usuario_atual.perfil }}</span>
+        <form method="post" action="{{ url_for('sair') }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="link perigo" type="submit">Sair</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+
+  <main class="conteudo">
+    {% if request.endpoint not in ['inicio', 'painel_professor', 'area_aluno'] %}
+      {% if usuario_atual and usuario_atual.eh_professor %}
+        {% set painel_principal = url_for('painel_professor') %}
+      {% elif usuario_atual and usuario_atual.eh_aluno %}
+        {% set painel_principal = url_for('area_aluno') %}
+      {% else %}
+        {% set painel_principal = url_for('inicio') %}
+      {% endif %}
+      <nav class="navegacao-voltar" aria-label="Navegação de retorno">
+        <a class="botao botao-voltar" href="{{ painel_principal }}" data-voltar>← Voltar</a>
+      </nav>
+    {% endif %}
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% if mensagens %}
+        <div class="avisos" aria-live="polite">
+          {% for categoria, mensagem in mensagens %}
+            <div class="aviso {{ categoria }}">{{ mensagem }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+  </main>
+  <footer class="rodape"><a href="{{ url_for('termos') }}">Termos de Uso e Política de Privacidade</a><span>Protótipo acadêmico TaskFlowCards</span></footer>
+{% if usuario_atual %}
+<script src="{{ url_for('static', filename='sessao.js') }}" defer
+ data-csrf="{{ csrf }}" data-partida="{{ '1' if request.endpoint in ['jogar', 'sala_multijogador'] else '0' }}"></script>
+{% endif %}
+</body>
+</html>

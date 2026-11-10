@@ -2,5 +2,12 @@
 __pycache__/
 *.py[cod]
 data/
+banco_de_dados/dados/
 .data_key
 .env
+config/gemini-key.txt
+config/mysql-config.json
+config/*.tmp
+backups/
+.ruff_cache/
+test-results/

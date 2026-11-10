@@ -1,6 +1,6 @@
 import unittest
 
-from taskflow.banco import ConexaoMySQL, ESQUEMA_MYSQL, adaptar_sql_mysql
+from banco_de_dados.banco import ESQUEMA_MYSQL, ConexaoMySQL, adaptar_sql_mysql
 
 
 class CursorFalso:

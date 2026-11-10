@@ -20,9 +20,9 @@ A segunda versão usa MySQL 8/PyMySQL como banco da aplicação. SQLite aparece 
 
 Senhas e códigos de recuperação em texto puro não são armazenados. A auditoria não copia nomes, e-mails, matrículas, senhas, códigos ou conteúdo enviado à IA.
 
-Nome, e-mail e matrícula são protegidos com criptografia autenticada Fernet. A busca de login usa um índice HMAC não reversível. A chave não é gravada no banco: fica no arquivo local ignorado `data/.data_key` ou na variável `TASKFLOW_DATA_KEY`.
+Nome, e-mail e matrícula são protegidos com criptografia autenticada Fernet. A busca de login usa um índice HMAC não reversível. A chave não é gravada no banco: fica no arquivo local ignorado `banco_de_dados/dados/.data_key` ou na variável `TASKFLOW_DATA_KEY`.
 
-Senhas e códigos não são criptografados de forma reversível: usam PBKDF2-HMAC-SHA256 com salt. Novos eventos de auditoria recebem assinatura assimétrica Ed25519; a chave pública permite detectar alteração do conteúdo registrado. A chave privada local fica em `data/.audit_private.pem`, arquivo ignorado pelo Git, e deve acompanhar o backup seguro do banco. Em publicação real, HTTPS/TLS e um cofre de chaves deverão proteger transporte e segredos.
+Senhas e códigos não são criptografados de forma reversível: usam PBKDF2-HMAC-SHA256 com salt. Novos eventos de auditoria recebem assinatura assimétrica Ed25519; a chave pública permite detectar alteração do conteúdo registrado. A chave privada local fica em `banco_de_dados/dados/.audit_private.pem`, arquivo ignorado pelo Git, e deve acompanhar o backup seguro do banco. Em publicação real, HTTPS/TLS e um cofre de chaves deverão proteger transporte e segredos.
 
 ## Direitos do titular e saída
 

@@ -36,6 +36,6 @@ Em produção, use um usuário exclusivo com privilégios apenas sobre o banco
 `taskflowcards`. Para conexão remota, configure TLS por
 `TASKFLOW_MYSQL_SSL_CA`; não exponha a porta 3306 diretamente à internet.
 
-Os arquivos `data/.data_key` e `data/.audit_private.pem` devem ser mantidos com
+Os arquivos `banco_de_dados/dados/.data_key` e `banco_de_dados/dados/.audit_private.pem` devem ser mantidos com
 a aplicação e protegidos no backup, pois permitem descriptografar os dados e
 validar ou assinar a auditoria.

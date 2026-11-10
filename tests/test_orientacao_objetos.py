@@ -1,21 +1,21 @@
-from dataclasses import fields, is_dataclass
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import fields, is_dataclass
+from pathlib import Path
 from unittest.mock import patch
 
 from flask.views import MethodView
 
-from app import criar_aplicacao
-from taskflow.dominio import (
-    Desempenho,
+from backend.app import criar_aplicacao
+from backend.taskflow.dominio import (
     PERFIL_ALUNO,
     PERFIL_PROFESSOR,
+    Desempenho,
     Questao,
     ResultadoResposta,
     Usuario,
 )
-from taskflow.web import (
+from backend.taskflow.web import (
     AplicacaoTaskFlowWeb,
     ControladorBase,
     ControladorProtegido,
@@ -74,14 +74,20 @@ class TestesOrientacaoObjetos(unittest.TestCase):
     def test_fabrica_cria_instancias_independentes(self):
         with tempfile.TemporaryDirectory() as temporario:
             raiz = Path(temporario)
-            primeira = criar_aplicacao({
-                "TESTING": True, "SECRET_KEY": "primeira",
-                "BANCO": raiz / "primeira.sqlite3",
-            })
-            segunda = criar_aplicacao({
-                "TESTING": True, "SECRET_KEY": "segunda",
-                "BANCO": raiz / "segunda.sqlite3",
-            })
+            primeira = criar_aplicacao(
+                {
+                    "TESTING": True,
+                    "SECRET_KEY": "primeira",
+                    "BANCO": raiz / "primeira.sqlite3",
+                }
+            )
+            segunda = criar_aplicacao(
+                {
+                    "TESTING": True,
+                    "SECRET_KEY": "segunda",
+                    "BANCO": raiz / "segunda.sqlite3",
+                }
+            )
             try:
                 self.assertIsNot(primeira, segunda)
                 self.assertIsNot(
@@ -94,14 +100,19 @@ class TestesOrientacaoObjetos(unittest.TestCase):
 
     def test_execucao_normal_configura_mysql_obrigatoriamente(self):
         configuracao_mysql = {
-            "host": "mysql.local", "port": 3306, "user": "taskflow",
-            "password": "segredo-de-teste", "database": "taskflowcards",
+            "host": "mysql.local",
+            "port": 3306,
+            "user": "taskflow",
+            "password": "segredo-de-teste",
+            "database": "taskflowcards",
         }
-        with patch("taskflow.web.RepositorioTaskFlow") as classe_repositorio:
-            criar_aplicacao({
-                "SECRET_KEY": "segredo-da-sessao",
-                "MYSQL": configuracao_mysql,
-            })
+        with patch("backend.taskflow.web.RepositorioTaskFlow") as classe_repositorio:
+            criar_aplicacao(
+                {
+                    "SECRET_KEY": "segredo-da-sessao",
+                    "MYSQL": configuracao_mysql,
+                }
+            )
         argumentos = classe_repositorio.call_args.kwargs
         self.assertEqual(argumentos["configuracao_mysql"], configuracao_mysql)
         self.assertIsNotNone(argumentos["configuracao_mysql"])

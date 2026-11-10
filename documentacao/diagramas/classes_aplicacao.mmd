@@ -1,0 +1,43 @@
+classDiagram
+direction TB
+class ServicoTaskFlow {
+  -ContextoServico _contexto
+  +ServicoContas contas
+  +ServicoQuestoes questoes
+  +ServicoJogos jogos
+  +ServicoSalas salas
+  +ServicoDesempenho desempenho
+  +login(perfil, identificador, senha)
+  +criar_sala_multijogador(nome, questoes_ids)
+}
+class ContextoServico {
+  +Usuario usuario_atual
+  +RepositorioTaskFlow repositorio
+  +ServicoGemini gemini
+  +dict tentativas
+}
+class RepositorioTaskFlow {
+  +RepositorioUsuarios usuarios
+  +RepositorioQuestoes questoes
+  +RepositorioSalas salas
+  +RepositorioDesempenho desempenho
+  +RepositorioAuditoria auditoria
+  -InfraestruturaBanco _infraestrutura
+  +criar_sala_multijogador(codigo, nome, criador_id, questoes_ids)
+  +fechar()
+}
+class InfraestruturaBanco {
+  +conexao
+  -RLock _bloqueio
+  +CriptografiaDados criptografia
+  +AssinadorAuditoria assinador_auditoria
+  +fechar()
+}
+class MigradorBanco {
+  +InfraestruturaBanco infraestrutura
+  +aplicar()
+}
+ServicoTaskFlow "1" *-- "1" ContextoServico
+ServicoTaskFlow ..> RepositorioTaskFlow : usa
+RepositorioTaskFlow "1" *-- "1" InfraestruturaBanco
+InfraestruturaBanco ..> MigradorBanco : cria e utiliza

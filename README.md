@@ -4,7 +4,90 @@ Este repositório contém a segunda versão do TaskFlowCards, agora funcionando 
 
 A proposta continua sendo utilizar perguntas em atividades pedagógicas de uma forma mais dinâmica. Nesta versão, o professor administra os alunos, prepara as questões e cria as salas. Os alunos podem treinar contra o bot ou participar das partidas on-line criadas pelo professor.
 
-## O que já está funcionando
+## Como organizei o código
+
+Separei o que aparece no navegador das regras executadas no servidor. O projeto
+continua sendo uma aplicação Flask, sem precisar de dois servidores ou de dois
+repositórios para isso.
+
+| Local | Responsabilidade |
+| --- | --- |
+| `frontend/templates/` | Páginas HTML com Jinja, renderizadas pelo Flask. |
+| `frontend/static/` | CSS e JavaScript enviados ao navegador. |
+| `backend/taskflow/web.py` | Rotas, controladores, sessão e proteção dos formulários. |
+| `backend/taskflow/dominio.py` | Entidades e validações do domínio. |
+| `backend/taskflow/servicos/` | Regras de contas, questões, jogos, salas e desempenho. |
+| `banco_de_dados/persistencia/` | Consultas e gravações, separadas por responsabilidade. |
+| `backend/taskflow/gemini.py` | Comunicação com a API externa. |
+| `backend/taskflow/criptografia.py` e `seguranca.py` | Criptografia, assinaturas e proteção de senhas. |
+
+As classes `ServicoTaskFlow` e `RepositorioTaskFlow` funcionam como fachadas:
+elas encaminham as chamadas para classes menores. Assim, as telas continuam
+usando a mesma interface, mas as regras não ficam todas concentradas em uma classe.
+Os serviços recebem suas dependências e compartilham o contexto do usuário apenas
+dentro da mesma instância. Cada requisição cria seu serviço com a identidade da
+sessão. Os repositórios compartilham a conexão e o bloqueio existentes para manter
+o comportamento das transações. A preparação do esquema e das chaves fica em
+`banco_de_dados/persistencia/infraestrutura.py`.
+
+O MySQL continua armazenando os registros no próprio servidor. A pasta
+`banco_de_dados/` reúne o código de conexão, o esquema e os repositórios. A subpasta
+`dados/` preserva os arquivos locais de segurança e não é publicada no Git.
+Para iniciar manualmente, execute `python -m backend.app` na raiz do projeto,
+com as variáveis do MySQL configuradas. Pelo Windows, continue usando `INICIAR.bat`.
+
+Essa organização facilita encontrar problemas, testar regras isoladamente e
+alterar uma funcionalidade sem misturar código de outras áreas. Separar arquivos,
+por si só, não garante segurança: o navegador pode ser modificado pelo usuário.
+Por isso, as permissões e validações precisam continuar no back-end, mesmo quando
+o formulário também faz uma validação visual. As páginas usam serviços para as
+consultas de negócio; o gerenciador de sessão consulta a persistência para validar
+se a conta continua ativa.
+
+A chave do Gemini fica em `config/gemini-key.txt`, fora de `frontend/static/`, e não deve
+ser enviada ao navegador nem incluída no Git ou no ZIP distribuído. Ela continua
+sendo um arquivo de texto local, não um arquivo criptografado. A refatoração não
+altera as regras de cadastro, exclusão de contas ou o esquema do banco.
+
+Referências usadas para essa organização:
+[modularização no Flask](https://flask.palletsprojects.com/en/stable/blueprints/) e
+[autorização no servidor — OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
+
+## Funcionalidades
+
+### Salvar a conexão com o MySQL
+
+Ao abrir `INICIAR.bat`, informe servidor, porta, banco, usuário e senha. No final,
+escolha **S** para salvar em `config/mysql-config.json`. Nas próximas aberturas:
+
+- **Enter:** reutiliza a conexão salva;
+- **A:** altera os campos e permite salvar as mudanças; Enter mantém cada valor anterior;
+- **R:** remove somente a configuração salva e solicita uma conexão para aquela sessão;
+- **N:** usa outra conexão apenas naquela sessão, preservando o arquivo anterior.
+
+A alteração pergunta separadamente se você quer trocar a senha. Remover a
+configuração não exclui o banco, as tabelas nem os resultados. O MySQL ainda
+precisa estar iniciado. O código de configuração do primeiro professor não é salvo.
+
+O arquivo é portátil e contém a senha em texto legível. Ele está no `.gitignore`,
+mas também deve ser retirado ao compartilhar a pasta por ZIP, junto de
+`config/gemini-key.txt`. O projeto deve ser entregue sem credenciais pessoais.
+O auxiliar `MYSQL_CONFIGURACAO.ps1` cuida da leitura, validação, menu e gravação.
+Para testar esse fluxo sem acessar um banco real:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests\TESTAR_CONFIGURACAO_MYSQL.ps1
+```
+
+As versões das dependências estão fixadas em `requirements.txt`. O inicializador
+procura Python 3.11 ou superior por `py` ou `python`; uma `.venv` copiada de outro
+computador precisa ser recriada se apontar para uma instalação inexistente.
+
+Também há verificações locais de qualidade, testes com MySQL real, teste de
+navegador e backup com restauração em destino vazio. Consulte
+[Validação local](documentacao/VALIDACAO_LOCAL.md) e
+[Backup e migrações](documentacao/BACKUP_E_MIGRACOES.md).
+Esses recursos não dependem de automação no GitHub ou hospedagem pública.
 
 ### Acesso e segurança
 
@@ -87,7 +170,7 @@ Para criar arquivos desse tipo manualmente:
 1. Abra a pasta do projeto no VS Code.
 2. Crie um arquivo novo.
 3. Salve usando exatamente a extensão `.bat` ou `.ps1`.
-4. Deixe os arquivos na pasta principal, no mesmo local do `app.py`.
+4. Deixe os inicializadores na pasta principal, ao lado do `README.md`.
 5. Confira se o Windows não acrescentou `.txt` ao nome. O arquivo precisa se chamar `INICIAR.bat`, e não `INICIAR.bat.txt`.
 
 Os três arquivos trabalham desta forma:
@@ -96,7 +179,7 @@ Os três arquivos trabalham desta forma:
 INICIAR.bat
     └── chama INICIAR_MYSQL.ps1
             └── configura MySQL e Gemini
-                    └── executa app.py
+                    └── executa backend/app.py
 
 TESTAR.bat
     └── usa o Python da .venv
@@ -110,26 +193,43 @@ TESTAR.bat
 setlocal
 cd /d "%~dp0"
 
-set "PYTHON_EXE=%LocalAppData%\Programs\Python\Python313\python.exe"
-if not exist "%PYTHON_EXE%" set "PYTHON_EXE=py"
+if exist ".venv\Scripts\python.exe" goto validar_ambiente
+py -3 -c "import sys; sys.exit(sys.version_info < (3,11))" >nul 2>&1
+if not errorlevel 1 goto criar_com_py
+python -c "import sys; sys.exit(sys.version_info < (3,11))" >nul 2>&1
+if errorlevel 1 goto python_ausente
+python -m venv .venv
+if errorlevel 1 goto erro
+goto validar_ambiente
 
-if not exist ".venv\Scripts\python.exe" (
-  echo Criando ambiente virtual...
-  "%PYTHON_EXE%" -3 -m venv .venv 2>nul || "%PYTHON_EXE%" -m venv .venv
-  if errorlevel 1 goto erro
+:criar_com_py
+py -3 -m venv .venv
+if errorlevel 1 goto erro
+
+:validar_ambiente
+".venv\Scripts\python.exe" -c "import sys; sys.exit(sys.version_info < (3,11))"
+if errorlevel 1 (
+  echo O ambiente .venv nao e valido nesta maquina. Renomeie essa pasta e inicie novamente.
+  goto erro
 )
 
 echo Instalando dependencias...
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto erro
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0INICIAR_MYSQL.ps1"
-if errorlevel 1 goto erro
+rem O servidor usa um console proprio. Este lote termina antes de Ctrl+C,
+rem evitando a confirmacao de encerramento do CMD durante o jogo.
+start "TaskFlowCards - servidor" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0INICIAR_MYSQL.ps1"
 goto fim
 
 :erro
 echo.
 echo Nao foi possivel iniciar. Confira o Python e a configuracao do MySQL.
+pause
+goto fim
+
+:python_ausente
+echo Instale Python 3.11 ou superior e habilite o comando python ou py.
 pause
 
 :fim
@@ -145,29 +245,62 @@ Se a pasta `.venv` ainda não existir, o próprio arquivo cria o ambiente virtua
 ```powershell
 $ErrorActionPreference = "Stop"
 $executavel = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
-$aplicacao = Join-Path $PSScriptRoot "app.py"
+Set-Location -LiteralPath $PSScriptRoot
 
-$hostInformado = Read-Host "Servidor MySQL [127.0.0.1]"
-$portaInformada = Read-Host "Porta MySQL [3306]"
-$bancoInformado = Read-Host "Nome do banco [taskflowcards]"
-$usuarioInformado = Read-Host "Usuário MySQL"
-$senhaSegura = Read-Host "Senha MySQL" -AsSecureString
-$credencial = [System.Net.NetworkCredential]::new("", $senhaSegura)
+. (Join-Path $PSScriptRoot 'MYSQL_CONFIGURACAO.ps1')
+$configuracaoMySql = Select-MySqlConfiguration -Path (Join-Path $PSScriptRoot 'config\mysql-config.json')
 $codigoInicial = Read-Host "Código do primeiro professor (deixe vazio se já existe)" -AsSecureString
 $credencialInicial = [System.Net.NetworkCredential]::new("", $codigoInicial)
 
-$env:TASKFLOW_MYSQL_HOST = if ($hostInformado) { $hostInformado } else { "127.0.0.1" }
-$env:TASKFLOW_MYSQL_PORT = if ($portaInformada) { $portaInformada } else { "3306" }
-$env:TASKFLOW_MYSQL_DATABASE = if ($bancoInformado) { $bancoInformado } else { "taskflowcards" }
-$env:TASKFLOW_MYSQL_USER = $usuarioInformado
-$env:TASKFLOW_MYSQL_PASSWORD = $credencial.Password
+$env:TASKFLOW_MYSQL_HOST = $configuracaoMySql.servidor
+$env:TASKFLOW_MYSQL_PORT = [string]$configuracaoMySql.porta
+$env:TASKFLOW_MYSQL_DATABASE = $configuracaoMySql.banco
+$env:TASKFLOW_MYSQL_USER = $configuracaoMySql.usuario
+$env:TASKFLOW_MYSQL_PASSWORD = $configuracaoMySql.senha
 if ($credencialInicial.Password) {
     $env:TASKFLOW_SETUP_CODE = $credencialInicial.Password
 }
 
-$usarGemini = Read-Host "Deseja usar o Google Gemini? [S/N]"
-if ($usarGemini -match '^[Ss]$') {
-    $geminiSegura = Read-Host "Chave do Google AI Studio" -AsSecureString
+. (Join-Path $PSScriptRoot 'GEMINI_CREDENCIAL.ps1')
+$arquivoGemini = Join-Path $PSScriptRoot 'config\gemini-key.txt'
+$geminiSegura = $null
+Remove-Item Env:GEMINI_API_KEY -ErrorAction SilentlyContinue
+try {
+    $geminiSegura = Read-GeminiCredential -Path $arquivoGemini
+}
+catch {
+    Write-Host 'Nao foi possivel ler config/gemini-key.txt. Confira o arquivo ou cadastre a chave novamente.' -ForegroundColor Yellow
+}
+if ($geminiSegura) {
+    Write-Host 'Chave Gemini encontrada em config/gemini-key.txt.' -ForegroundColor Green
+    do {
+        $opcaoGemini = (Read-Host 'Gemini: Enter para usar a chave salva, A para alterar, R para remover, N para nao usar nesta sessao').Trim().ToUpperInvariant()
+    } while ($opcaoGemini -notin @('', 'A', 'R', 'N'))
+    if ($opcaoGemini -eq 'R') {
+        if ((Read-Host 'Remover a chave salva? [S/N]') -match '^[Ss]$') {
+            Remove-Item -LiteralPath $arquivoGemini -ErrorAction Stop
+            $geminiSegura = $null
+            Write-Host 'Arquivo da chave removido. Isso nao revoga a chave no Google.'
+        }
+    }
+    elseif ($opcaoGemini -eq 'N') { $geminiSegura = $null }
+}
+else {
+    Write-Host 'Nenhuma chave Gemini salva no arquivo do projeto.'
+    $opcaoGemini = if ((Read-Host 'Deseja informar e salvar a chave em config/gemini-key.txt? [S/N]') -match '^[Ss]$') { 'A' } else { 'N' }
+}
+if ($opcaoGemini -eq 'A') {
+    $novaChaveGemini = Read-Host 'Nova chave do Google AI Studio (Enter cancela)' -AsSecureString
+    if ($novaChaveGemini.Length -gt 0) {
+        try {
+            Save-GeminiCredential -Path $arquivoGemini -Secret $novaChaveGemini
+            $geminiSegura = Read-GeminiCredential -Path $arquivoGemini
+            Write-Host 'Chave salva em config/gemini-key.txt. Voce pode editar esse arquivo no Bloco de Notas.' -ForegroundColor Green
+        }
+        catch { Write-Host 'Nao foi possivel salvar a nova chave. A configuracao anterior foi mantida.' -ForegroundColor Yellow }
+    }
+}
+if ($geminiSegura) {
     $credencialGemini = [System.Net.NetworkCredential]::new("", $geminiSegura)
     $env:GEMINI_API_KEY = $credencialGemini.Password
     $env:GEMINI_MODEL = "gemini-3.5-flash-lite"
@@ -177,7 +310,7 @@ try {
     Write-Host ""
     Write-Host "Servidor pronto para iniciar." -ForegroundColor Green
     Write-Host "O navegador não será aberto automaticamente." -ForegroundColor Cyan
-    & $executavel $aplicacao
+    & $executavel -m backend.app
 }
 finally {
     Remove-Item Env:TASKFLOW_MYSQL_HOST -ErrorAction SilentlyContinue
@@ -193,7 +326,7 @@ finally {
 
 Esse arquivo foi separado porque o PowerShell permite solicitar senhas sem mostrá-las na tela usando `-AsSecureString`. Ele recebe as informações do MySQL e guarda esses valores apenas em variáveis de ambiente do processo.
 
-Se o Gemini for ativado, a chave também fica somente no ambiente enquanto o servidor estiver funcionando. O bloco `try` executa o `app.py`. O bloco `finally` remove as variáveis quando o programa termina, mesmo que ocorra algum erro.
+O Gemini usa a chave salva em `config/gemini-key.txt`, conforme a opção escolhida na inicialização. O bloco `try` executa `python -m backend.app` a partir da raiz do projeto. O bloco `finally` remove as variáveis do processo quando o programa termina; o arquivo da chave permanece até o usuário alterá-lo ou removê-lo.
 
 O `INICIAR.bat` chama esse script usando `-ExecutionPolicy Bypass` apenas para aquela execução. Isso evita alterar permanentemente a política do PowerShell do computador.
 
@@ -223,7 +356,7 @@ A aplicação utiliza somente MySQL 8 durante a execução. As tabelas são cria
 
 O SQLite aparece apenas nos bancos temporários dos testes automatizados; ele não é uma opção de banco para executar o sistema.
 
-A chave usada para criptografar os dados fica em `data/.data_key`. As chaves da assinatura da auditoria ficam em `data/.audit_private.pem` e `data/.audit_private.pub`. Esses arquivos não devem ser enviados ao GitHub. Para não perder o acesso aos dados criptografados, o backup do MySQL deve ser acompanhado das chaves.
+A chave usada para criptografar os dados fica em `banco_de_dados/dados/.data_key`. As chaves da assinatura da auditoria ficam em `banco_de_dados/dados/.audit_private.pem` e `banco_de_dados/dados/.audit_private.pub`. Esses arquivos não devem ser enviados ao GitHub. Para não perder o acesso aos dados criptografados, o backup do MySQL deve ser acompanhado das chaves.
 
 Mais informações estão em `documentacao/MYSQL.md`.
 
@@ -240,18 +373,26 @@ Essas proteções cuidam dos dados armazenados. Em uma publicação real, ainda 
 
 A integração com o Google Gemini é utilizada para gerar e adaptar questões e, quando disponível, produzir a narração. O professor sempre deve revisar o conteúdo antes de liberá-lo para os alunos.
 
-A chave fica somente no ambiente do servidor e não é colocada no código ou no navegador. A documentação técnica está em `documentacao/INTEGRACAO_GEMINI.md`.
+A chave local fica em `config/gemini-key.txt`, ignorado pelo Git, e é carregada no ambiente do servidor. Ela não é enviada ao navegador. A documentação técnica está em `documentacao/INTEGRACAO_GEMINI.md`.
 
 ## Estrutura principal
 
 ```text
-app.py                 ponto de entrada da aplicação
-INICIAR.bat            inicializador principal
-INICIAR_MYSQL.ps1      configuração interna usada pelo inicializador
-requirements.txt       dependências do projeto
-taskflow/              domínio, serviços, segurança, banco e Gemini
-templates/             páginas HTML com Jinja
-static/                estilos e JavaScript
-tests/                 testes automatizados
-documentacao/          documentação técnica e de privacidade
+backend/
+  app.py                      ponto de entrada da aplicação
+  taskflow/                   domínio, serviços, segurança, rotas e Gemini
+frontend/
+  templates/                  páginas HTML com Jinja
+  static/                     estilos e JavaScript
+banco_de_dados/
+  banco.py                    conexão e esquema MySQL
+  repositorio.py              fachada de persistência
+  persistencia/               consultas e preparação do esquema
+  dados/                      chaves e arquivos locais (fora do Git)
+config/                       configuração local do Gemini
+tests/                        testes automatizados
+documentacao/                 documentação técnica e de privacidade
+INICIAR.bat                   inicializador principal
+INICIAR_MYSQL.ps1             configuração usada pelo inicializador
+requirements.txt              dependências do projeto
 ```

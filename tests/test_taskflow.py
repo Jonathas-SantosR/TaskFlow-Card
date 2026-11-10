@@ -1,17 +1,16 @@
-import json
 import base64
-from io import BytesIO
-from pathlib import Path
+import json
 import tempfile
 import unittest
+from io import BytesIO
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
-from taskflow.dominio import AcessoNegado, ErroDominio, PERFIL_ALUNO, PERFIL_PROFESSOR
-from taskflow.gemini import ErroGemini, ServicoGemini
-from taskflow.repositorio import ProfessorJaExiste, RepositorioTaskFlow
-from taskflow.servico import ServicoTaskFlow
-
+from backend.taskflow.dominio import PERFIL_ALUNO, PERFIL_PROFESSOR, AcessoNegado, ErroDominio
+from backend.taskflow.gemini import ErroGemini, ServicoGemini
+from backend.taskflow.servico import ServicoTaskFlow
+from banco_de_dados.repositorio import ProfessorJaExiste, RepositorioTaskFlow
 
 SENHA_PROFESSOR = "Professor!2026"
 SENHA_ALUNO = "Estudante!2026"
@@ -38,8 +37,12 @@ class TestesTaskFlow(unittest.TestCase):
 
     def criar_professor(self):
         return self.servico.criar_primeiro_professor(
-            "Professora Ana", "ana@escola.test", SENHA_PROFESSOR,
-            SENHA_PROFESSOR, True, CODIGO_CONFIGURACAO,
+            "Professora Ana",
+            "ana@escola.test",
+            SENHA_PROFESSOR,
+            SENHA_PROFESSOR,
+            True,
+            CODIGO_CONFIGURACAO,
         )
 
     def criar_questao(self, dificuldade="MÉDIO"):
@@ -61,8 +64,12 @@ class TestesTaskFlow(unittest.TestCase):
         self.servico.logout()
         with self.assertRaises(ProfessorJaExiste):
             self.servico.criar_primeiro_professor(
-                "Outro Professor", "outro@escola.test", SENHA_PROFESSOR,
-                SENHA_PROFESSOR, True, CODIGO_CONFIGURACAO,
+                "Outro Professor",
+                "outro@escola.test",
+                SENHA_PROFESSOR,
+                SENHA_PROFESSOR,
+                True,
+                CODIGO_CONFIGURACAO,
             )
 
     def test_autocadastro_de_segundo_professor_e_bloqueado(self):
@@ -81,16 +88,18 @@ class TestesTaskFlow(unittest.TestCase):
     def test_aceite_e_credenciais_sao_obrigatorios(self):
         with self.assertRaises(ErroDominio):
             self.servico.criar_primeiro_professor(
-                "Professora Ana", "ana@escola.test", SENHA_PROFESSOR,
-                SENHA_PROFESSOR, False, CODIGO_CONFIGURACAO,
+                "Professora Ana",
+                "ana@escola.test",
+                SENHA_PROFESSOR,
+                SENHA_PROFESSOR,
+                False,
+                CODIGO_CONFIGURACAO,
             )
         self.criar_professor()
         self.servico.logout()
         with self.assertRaises(ErroDominio):
             self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", "errada")
-        usuario = self.servico.login(
-            PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR
-        )
+        usuario = self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR)
         self.assertEqual(usuario.nome, "Professora Ana")
 
     def test_login_bloqueia_apos_cinco_tentativas(self):
@@ -98,19 +107,13 @@ class TestesTaskFlow(unittest.TestCase):
         self.servico.logout()
         for _ in range(5):
             with self.assertRaisesRegex(ErroDominio, "Credenciais inválidas"):
-                self.servico.login(
-                    PERFIL_PROFESSOR, "ana@escola.test", "senha-incorreta"
-                )
+                self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", "senha-incorreta")
         with self.assertRaisesRegex(ErroDominio, "Aguarde 15 minutos"):
-            self.servico.login(
-                PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR
-            )
+            self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR)
 
     def test_professor_cadastra_e_administra_aluno(self):
-        professor = self.criar_professor()
-        aluno = self.servico.criar_aluno(
-            "Aluno Teste", "RA-2026", SENHA_ALUNO, SENHA_ALUNO
-        )
+        self.criar_professor()
+        aluno = self.servico.criar_aluno("Aluno Teste", "RA-2026", SENHA_ALUNO, SENHA_ALUNO)
         self.assertTrue(aluno.ativo)
         self.assertEqual(len(self.servico.listar_alunos()), 1)
         bloqueado = self.servico.alternar_aluno(aluno.id)
@@ -125,9 +128,7 @@ class TestesTaskFlow(unittest.TestCase):
         aluno = self.servico.criar_aluno(
             "Aluno com vínculos", "RA-VINCULOS", SENHA_ALUNO, SENHA_ALUNO
         )
-        colega = self.servico.criar_aluno(
-            "Aluno colega", "RA-COLEGA", SENHA_ALUNO, SENHA_ALUNO
-        )
+        colega = self.servico.criar_aluno("Aluno colega", "RA-COLEGA", SENHA_ALUNO, SENHA_ALUNO)
         self.repositorio.registrar_aceite(aluno.id)
         sala = self.repositorio.criar_sala_multijogador(
             "ABC123", "Sala de vínculos", professor.id, [questao.id]
@@ -137,9 +138,7 @@ class TestesTaskFlow(unittest.TestCase):
         self.repositorio.registrar_resposta_multijogador(
             sala, aluno.id, questao, questao.indice_correto, True, questao.pontos
         )
-        self.repositorio.registrar_evento(
-            PERFIL_ALUNO, "LOGIN_OK", "SESSAO", aluno.id, aluno.id
-        )
+        self.repositorio.registrar_evento(PERFIL_ALUNO, "LOGIN_OK", "SESSAO", aluno.id, aluno.id)
 
         self.servico.excluir_aluno(aluno.id)
 
@@ -182,16 +181,12 @@ class TestesTaskFlow(unittest.TestCase):
     def test_aluno_recebe_feedback_e_desempenho(self):
         self.criar_professor()
         questao = self.criar_questao()
-        aluno = self.servico.criar_aluno(
-            "Aluno Jogador", "RA-JOGO", SENHA_ALUNO, SENHA_ALUNO
-        )
+        aluno = self.servico.criar_aluno("Aluno Jogador", "RA-JOGO", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         self.servico.login(PERFIL_ALUNO, "RA-JOGO", SENHA_ALUNO)
         selecionada = self.servico.proxima_questao("BOT")
         self.assertEqual(selecionada.id, questao.id)
-        resultado = self.servico.responder_questao(
-            questao.id, 1, "BOT"
-        )
+        resultado = self.servico.responder_questao(questao.id, 1, "BOT")
         self.assertTrue(resultado.correta)
         self.assertEqual(resultado.pontos_recebidos, 2)
         desempenho = self.servico.meu_desempenho()
@@ -206,13 +201,14 @@ class TestesTaskFlow(unittest.TestCase):
         self.criar_professor()
         media = self.criar_questao("MÉDIO")
         facil = self.servico.criar_questao(
-            "Geografia", "FÁCIL", "Qual é a capital do Brasil?",
-            ["Brasília", "Salvador", "Recife", "Manaus"], 0,
+            "Geografia",
+            "FÁCIL",
+            "Qual é a capital do Brasil?",
+            ["Brasília", "Salvador", "Recife", "Manaus"],
+            0,
             "Brasília é a capital federal.",
         )
-        self.servico.criar_aluno(
-            "Aluno Treino", "RA-TREINO", SENHA_ALUNO, SENHA_ALUNO
-        )
+        self.servico.criar_aluno("Aluno Treino", "RA-TREINO", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         self.servico.login(PERFIL_ALUNO, "RA-TREINO", SENHA_ALUNO)
         for _ in range(3):
@@ -225,19 +221,23 @@ class TestesTaskFlow(unittest.TestCase):
         questoes = [
             self.criar_questao("MÉDIO"),
             self.servico.criar_questao(
-                "Geografia", "FÁCIL", "Qual é a capital do Brasil?",
-                ["Brasília", "Salvador", "Recife", "Manaus"], 0,
+                "Geografia",
+                "FÁCIL",
+                "Qual é a capital do Brasil?",
+                ["Brasília", "Salvador", "Recife", "Manaus"],
+                0,
                 "Brasília é a capital federal.",
             ),
             self.servico.criar_questao(
-                "Ciências", "DIFÍCIL", "Qual planeta é conhecido como vermelho?",
-                ["Marte", "Vênus", "Júpiter", "Saturno"], 0,
+                "Ciências",
+                "DIFÍCIL",
+                "Qual planeta é conhecido como vermelho?",
+                ["Marte", "Vênus", "Júpiter", "Saturno"],
+                0,
                 "Marte possui aparência avermelhada.",
             ),
         ]
-        self.servico.criar_aluno(
-            "Aluno Ciclo", "RA-CICLO", SENHA_ALUNO, SENHA_ALUNO
-        )
+        self.servico.criar_aluno("Aluno Ciclo", "RA-CICLO", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         self.servico.login(PERFIL_ALUNO, "RA-CICLO", SENHA_ALUNO)
         vistos = []
@@ -245,22 +245,21 @@ class TestesTaskFlow(unittest.TestCase):
             questao = self.servico.proxima_questao("BOT")
             self.assertNotIn(questao.id, vistos)
             vistos.append(questao.id)
-            self.servico.responder_questao(
-                questao.id, questao.indice_correto, "BOT"
-            )
+            self.servico.responder_questao(questao.id, questao.indice_correto, "BOT")
         self.assertEqual(set(vistos), {questao.id for questao in questoes})
 
     def test_multijogador_cria_sala_compartilha_questao_e_avanca_rodada(self):
         self.criar_professor()
         primeira = self.criar_questao("MÉDIO")
         segunda = self.servico.criar_questao(
-            "Geografia", "FÁCIL", "Qual é a capital do Brasil?",
-            ["Brasília", "Salvador", "Recife", "Manaus"], 0,
+            "Geografia",
+            "FÁCIL",
+            "Qual é a capital do Brasil?",
+            ["Brasília", "Salvador", "Recife", "Manaus"],
+            0,
             "Brasília é a capital federal.",
         )
-        sala = self.servico.criar_sala_multijogador(
-            "Revisão geral", [primeira.id, segunda.id]
-        )
+        sala = self.servico.criar_sala_multijogador("Revisão geral", [primeira.id, segunda.id])
         self.assertEqual(sala.nome, "Revisão geral")
         self.assertEqual(
             self.repositorio.questoes_ids_sala_multijogador(sala.id),
@@ -272,12 +271,8 @@ class TestesTaskFlow(unittest.TestCase):
         )
         self.assertEqual(sala.nome, "Revisão invertida")
         self.assertEqual(sala.questao_id, segunda.id)
-        self.servico.criar_aluno(
-            "Aluno Um", "RA-UM", SENHA_ALUNO, SENHA_ALUNO
-        )
-        self.servico.criar_aluno(
-            "Aluno Dois", "RA-DOIS", SENHA_ALUNO, SENHA_ALUNO
-        )
+        self.servico.criar_aluno("Aluno Um", "RA-UM", SENHA_ALUNO, SENHA_ALUNO)
+        self.servico.criar_aluno("Aluno Dois", "RA-DOIS", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
 
         jogador_um = ServicoTaskFlow(self.repositorio, self.gemini)
@@ -290,12 +285,8 @@ class TestesTaskFlow(unittest.TestCase):
         estado_um = jogador_um.estado_sala_multijogador(sala.codigo)
         self.assertEqual(len(estado_um["participantes"]), 2)
         questao = estado_um["questao"]
-        jogador_um.responder_sala_multijogador(
-            sala.codigo, questao.indice_correto
-        )
-        jogador_dois.responder_sala_multijogador(
-            sala.codigo, questao.indice_correto
-        )
+        jogador_um.responder_sala_multijogador(sala.codigo, questao.indice_correto)
+        jogador_dois.responder_sala_multijogador(sala.codigo, questao.indice_correto)
         estado_final = jogador_um.estado_sala_multijogador(sala.codigo)
         self.assertTrue(estado_final["todos_responderam"])
         rodada_dois = jogador_um.avancar_rodada_multijogador(sala.codigo)
@@ -306,47 +297,37 @@ class TestesTaskFlow(unittest.TestCase):
         jogador_dois.responder_sala_multijogador(sala.codigo, questao.indice_correto)
         encerrada = jogador_dois.avancar_rodada_multijogador(sala.codigo)
         self.assertEqual(encerrada.status, "ENCERRADA")
-        self.assertTrue(
-            jogador_um.estado_sala_multijogador(sala.codigo)["partida_encerrada"]
-        )
+        self.assertTrue(jogador_um.estado_sala_multijogador(sala.codigo)["partida_encerrada"])
         self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR)
         self.servico.excluir_sala_multijogador(sala.codigo)
         self.assertIsNone(self.repositorio.buscar_sala_multijogador(sala.codigo))
 
     def test_aluno_troca_senha_temporaria_no_primeiro_login(self):
         self.criar_professor()
-        self.servico.criar_aluno(
-            "Aluno Primeiro Acesso", "RA-INICIAL", SENHA_ALUNO, SENHA_ALUNO
-        )
+        self.servico.criar_aluno("Aluno Primeiro Acesso", "RA-INICIAL", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         aluno = self.servico.login(PERFIL_ALUNO, "RA-INICIAL", SENHA_ALUNO)
         self.assertTrue(aluno.primeiro_acesso)
-        atualizado = self.servico.alterar_senha_primeiro_acesso(
-            NOVA_SENHA, NOVA_SENHA, True
-        )
+        atualizado = self.servico.alterar_senha_primeiro_acesso(NOVA_SENHA, NOVA_SENHA, True)
         self.assertFalse(atualizado.primeiro_acesso)
         self.servico.logout()
         with self.assertRaisesRegex(ErroDominio, "Credenciais inválidas"):
             self.servico.login(PERFIL_ALUNO, "RA-INICIAL", SENHA_ALUNO)
-        autenticado = self.servico.login(
-            PERFIL_ALUNO, "RA-INICIAL", NOVA_SENHA
-        )
+        autenticado = self.servico.login(PERFIL_ALUNO, "RA-INICIAL", NOVA_SENHA)
         self.assertFalse(autenticado.primeiro_acesso)
 
     def test_professor_recupera_senha_com_codigo_configurado(self):
         self.criar_professor()
-        self.servico.configurar_recuperacao(
-            CODIGO_RECUPERACAO, CODIGO_RECUPERACAO
-        )
+        self.servico.configurar_recuperacao(CODIGO_RECUPERACAO, CODIGO_RECUPERACAO)
         self.assertTrue(self.servico.recuperacao_configurada())
         self.servico.logout()
         self.servico.recuperar_senha_professor(
-            "ana@escola.test", CODIGO_RECUPERACAO,
-            NOVA_SENHA, NOVA_SENHA,
+            "ana@escola.test",
+            CODIGO_RECUPERACAO,
+            NOVA_SENHA,
+            NOVA_SENHA,
         )
-        usuario = self.servico.login(
-            PERFIL_PROFESSOR, "ana@escola.test", NOVA_SENHA
-        )
+        usuario = self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", NOVA_SENHA)
         self.assertEqual(usuario.perfil, PERFIL_PROFESSOR)
 
     def test_codigo_de_recuperacao_exige_tamanho_maiuscula_e_numero(self):
@@ -363,17 +344,11 @@ class TestesTaskFlow(unittest.TestCase):
 
     def test_professor_redefine_senha_temporaria_do_aluno(self):
         self.criar_professor()
-        aluno = self.servico.criar_aluno(
-            "Aluno Recuperado", "RA-REC", SENHA_ALUNO, SENHA_ALUNO
-        )
-        redefinido = self.servico.redefinir_senha_aluno(
-            aluno.id, NOVA_SENHA, NOVA_SENHA
-        )
+        aluno = self.servico.criar_aluno("Aluno Recuperado", "RA-REC", SENHA_ALUNO, SENHA_ALUNO)
+        redefinido = self.servico.redefinir_senha_aluno(aluno.id, NOVA_SENHA, NOVA_SENHA)
         self.assertTrue(redefinido.primeiro_acesso)
         self.servico.logout()
-        autenticado = self.servico.login(
-            PERFIL_ALUNO, "RA-REC", NOVA_SENHA
-        )
+        autenticado = self.servico.login(PERFIL_ALUNO, "RA-REC", NOVA_SENHA)
         self.assertTrue(autenticado.primeiro_acesso)
 
     def test_aluno_nao_acessa_funcoes_administrativas(self):
@@ -388,9 +363,7 @@ class TestesTaskFlow(unittest.TestCase):
 
     def test_auditoria_usa_ids_e_nao_dados_pessoais(self):
         professor = self.criar_professor()
-        aluno = self.servico.criar_aluno(
-            "Maria Privada", "RA-PRIVADO", SENHA_ALUNO, SENHA_ALUNO
-        )
+        aluno = self.servico.criar_aluno("Maria Privada", "RA-PRIVADO", SENHA_ALUNO, SENHA_ALUNO)
         eventos = self.servico.listar_auditoria()
         self.assertTrue(any(item["evento"] == "ALUNO_CRIADO" for item in eventos))
         texto = str(eventos)
@@ -426,30 +399,22 @@ class TestesTaskFlow(unittest.TestCase):
         self.assertTrue(linha["chave_identificador"].startswith("idx:v1:"))
         self.assertTrue(linha["senha_hash"].startswith("pbkdf2_sha256$"))
         self.servico.logout()
-        autenticado = self.servico.login(
-            PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR
-        )
+        autenticado = self.servico.login(PERFIL_PROFESSOR, "ana@escola.test", SENHA_PROFESSOR)
         self.assertEqual(autenticado.nome, "Professora Ana")
 
     def test_aluno_pode_anonimizar_a_propria_conta(self):
         self.criar_professor()
-        aluno = self.servico.criar_aluno(
-            "Aluno Privado", "RA-ANONIMO", SENHA_ALUNO, SENHA_ALUNO
-        )
+        aluno = self.servico.criar_aluno("Aluno Privado", "RA-ANONIMO", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         self.servico.login(PERFIL_ALUNO, "RA-ANONIMO", SENHA_ALUNO)
-        modo = self.servico.encerrar_conta(
-            "ANONIMIZAR", SENHA_ALUNO, "ANONIMIZAR"
-        )
+        modo = self.servico.encerrar_conta("ANONIMIZAR", SENHA_ALUNO, "ANONIMIZAR")
         self.assertEqual(modo, "ANONIMIZAR")
         anonimizado = self.repositorio.buscar_usuario(aluno.id)
         self.assertTrue(anonimizado.anonimizado)
         self.assertFalse(anonimizado.ativo)
         self.assertEqual(anonimizado.nome, "Usuário anonimizado")
         self.assertNotEqual(anonimizado.identificador, "RA-ANONIMO")
-        self.assertIsNone(
-            self.repositorio.autenticar(PERFIL_ALUNO, "RA-ANONIMO", SENHA_ALUNO)
-        )
+        self.assertIsNone(self.repositorio.autenticar(PERFIL_ALUNO, "RA-ANONIMO", SENHA_ALUNO))
         evento = self.repositorio.listar_eventos()[0]
         self.assertEqual(evento["evento"], "CONTA_ANONIMIZADA")
         self.assertIsNone(evento["ator_id"])
@@ -457,17 +422,13 @@ class TestesTaskFlow(unittest.TestCase):
 
     def test_aluno_pode_excluir_definitivamente_a_propria_conta(self):
         self.criar_professor()
-        aluno = self.servico.criar_aluno(
-            "Aluno Saída", "RA-SAIDA", SENHA_ALUNO, SENHA_ALUNO
-        )
+        aluno = self.servico.criar_aluno("Aluno Saída", "RA-SAIDA", SENHA_ALUNO, SENHA_ALUNO)
         self.servico.logout()
         self.servico.login(PERFIL_ALUNO, "RA-SAIDA", SENHA_ALUNO)
         modo = self.servico.encerrar_conta("EXCLUIR", SENHA_ALUNO, "EXCLUIR")
         self.assertEqual(modo, "EXCLUIR")
         self.assertIsNone(self.repositorio.buscar_usuario(aluno.id))
-        self.assertIsNone(
-            self.repositorio.autenticar(PERFIL_ALUNO, "RA-SAIDA", SENHA_ALUNO)
-        )
+        self.assertIsNone(self.repositorio.autenticar(PERFIL_ALUNO, "RA-SAIDA", SENHA_ALUNO))
         evento = self.repositorio.listar_eventos()[0]
         self.assertEqual(evento["evento"], "CONTA_EXCLUIDA")
         self.assertIsNone(evento["ator_id"])
@@ -482,7 +443,7 @@ class TestesTaskFlow(unittest.TestCase):
         self.assertIsNotNone(self.repositorio.buscar_usuario(professor.id))
 
     def test_gemini_rejeita_dado_pessoal_antes_da_rede(self):
-        with patch("taskflow.gemini.request.urlopen") as abrir:
+        with patch("backend.taskflow.gemini.request.urlopen") as abrir:
             with self.assertRaises(ErroDominio):
                 self.gemini.gerar_questao("Aluno aluno@escola.test", "MÉDIO")
         abrir.assert_not_called()
@@ -494,13 +455,11 @@ class TestesTaskFlow(unittest.TestCase):
             "indice_correto": 1,
             "explicacao": "A soma de dois com dois é quatro.",
         }
-        resposta_api = {
-            "candidates": [{"content": {"parts": [{"text": json.dumps(conteudo)}]}}]
-        }
+        resposta_api = {"candidates": [{"content": {"parts": [{"text": json.dumps(conteudo)}]}}]}
         resposta = MagicMock()
         resposta.__enter__.return_value = resposta
         resposta.read.return_value = json.dumps(resposta_api).encode("utf-8")
-        with patch("taskflow.gemini.request.urlopen", return_value=resposta) as abrir:
+        with patch("backend.taskflow.gemini.request.urlopen", return_value=resposta) as abrir:
             questao = self.gemini.gerar_questao("adição", "FÁCIL")
         self.assertEqual(questao["indice_correto"], 1)
         requisicao = abrir.call_args.args[0]
@@ -519,7 +478,7 @@ class TestesTaskFlow(unittest.TestCase):
         resposta = MagicMock()
         resposta.__enter__.return_value = resposta
         resposta.read.return_value = json.dumps(resposta_api).encode("utf-8")
-        with patch("taskflow.gemini.request.urlopen", return_value=resposta) as abrir:
+        with patch("backend.taskflow.gemini.request.urlopen", return_value=resposta) as abrir:
             audio, tipo = self.servico.gerar_narracao(questao.id)
         self.assertTrue(audio.startswith(b"RIFF"))
         self.assertEqual(tipo, "audio/wav")
@@ -540,26 +499,28 @@ class TestesTaskFlow(unittest.TestCase):
         )
 
     def test_gemini_explica_chave_invalida_sem_expor_resposta(self):
-        corpo = json.dumps({
-            "error": {
-                "code": 400,
-                "status": "INVALID_ARGUMENT",
-                "message": "API key not valid: segredo-que-nao-pode-vazar",
-                "details": [{"reason": "API_KEY_INVALID"}],
+        corpo = json.dumps(
+            {
+                "error": {
+                    "code": 400,
+                    "status": "INVALID_ARGUMENT",
+                    "message": "API key not valid: segredo-que-nao-pode-vazar",
+                    "details": [{"reason": "API_KEY_INVALID"}],
+                }
             }
-        }).encode("utf-8")
+        ).encode("utf-8")
         resposta = HTTPError("https://teste", 400, "Bad Request", {}, BytesIO(corpo))
-        with patch("taskflow.gemini.request.urlopen", side_effect=resposta):
+        with patch("backend.taskflow.gemini.request.urlopen", side_effect=resposta):
             with self.assertRaisesRegex(ErroGemini, "chave.*inválida.*HTTP 400") as erro:
                 self.gemini.gerar_questao("matemática", "MÉDIO")
         self.assertNotIn("segredo-que-nao-pode-vazar", str(erro.exception))
 
     def test_gemini_explica_modelo_indisponivel(self):
-        corpo = json.dumps({
-            "error": {"code": 404, "status": "NOT_FOUND", "message": "Not found"}
-        }).encode("utf-8")
+        corpo = json.dumps(
+            {"error": {"code": 404, "status": "NOT_FOUND", "message": "Not found"}}
+        ).encode("utf-8")
         resposta = HTTPError("https://teste", 404, "Not Found", {}, BytesIO(corpo))
-        with patch("taskflow.gemini.request.urlopen", side_effect=resposta):
+        with patch("backend.taskflow.gemini.request.urlopen", side_effect=resposta):
             with self.assertRaisesRegex(ErroGemini, "modelo.*HTTP 404"):
                 self.gemini.gerar_questao("matemática", "MÉDIO")
 
