@@ -178,4 +178,4 @@ CREATE INDEX IF NOT EXISTS idx_tokens_recuperacao_usuario
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_login_global ON usuarios(chave_login_global);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_sala_chave_academica ON salas_multijogador(chave_academica);
+CREATE INDEX IF NOT EXISTS idx_salas_chave_academica ON salas_multijogador(chave_academica);

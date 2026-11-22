@@ -3,7 +3,7 @@
 {% block titulo %}Contra Bot · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina"><p class="rotulo">JOGADOR AUTOMATIZADO</p><h1>Contra Bot</h1><p>Treinamento individual · {{ desempenho.acertos }}/{{ desempenho.total }} acertos · {{ desempenho.pontos }} pontos</p></section>
-{% if sala_academica %}<p class="dica">{{ sala_academica.nome }} · {{ sala_academica.ano_escolar }} · Turma {{ sala_academica.turma }} · Período {{ sala_academica.sala_escolar|capitalize }}. Somente questões ativas da sua sala.</p>{% endif %}
+{% if sala_academica %}<p class="dica">{{ sala_academica.disciplina ~ " · " if sala_academica.disciplina else "" }}{{ sala_academica.nome }} · {{ sala_academica.ano_escolar }} · Turma {{ sala_academica.turma }} · Período {{ sala_academica.sala_escolar|capitalize }}. Somente questões ativas da sua sala.</p>{% endif %}
 {% if questao %}
 <section class="painel questao jogo">
   <div class="meta-questao"><span>{{ questao.tema }}</span><span>{{ questao.dificuldade }}</span></div>
@@ -19,15 +19,18 @@
       <strong>Resultado do bot</strong>
       <p>{{ 'O bot acertou' if resultado.bot_acertou else 'O bot errou' }}{% if resultado.pontos_bot %} · +{{ resultado.pontos_bot }} ponto(s){% endif %}</p>
     </div>
-    <div class="acoes"><a class="botao sucesso" href="{{ url_for('jogar', modo=modo.lower()) }}">Próxima questão</a></div>
+    <div class="acoes"><a class="botao sucesso" href="{{ url_for('jogar', modo=modo.lower(), sala=sala_academica.codigo) }}">Próxima questão</a></div>
   {% else %}
-    <form method="post" class="formulario respostas">
+    <form method="post" action="{{ url_for('jogar', modo=modo.lower(), sala=sala_academica.codigo) }}" class="formulario respostas">
       {{ csrf_input(csrf) }}<input type="hidden" name="questao_id" value="{{ questao.id }}">
       {% for alternativa in questao.alternativas %}
         <label class="alternativa"><input type="radio" name="alternativa" value="{{ loop.index0 }}" required><span>{{ 'ABCD'[loop.index0] }}. {{ alternativa }}</span></label>
       {% endfor %}
-      <div class="acoes"><button class="botao sucesso" type="submit">Responder</button><button class="botao formulario-narracao-botao" type="button" data-url="{{ url_for('narracao_questao', questao_id=questao.id) }}" data-csrf="{{ csrf }}">Ouvir questão</button></div>
-      <audio class="audio-questao" controls hidden></audio>
+      <div class="acoes">
+        <button class="botao sucesso" type="submit">Responder</button>
+        <button class="botao" type="button" data-narracao-local="{{ questao.enunciado }}. {{ questao.alternativas | join('. ') }}" hidden>Ouvir questão</button>
+      </div>
+      <p class="dica" data-narracao-status role="status"></p>
     </form>
   {% endif %}
 </section>

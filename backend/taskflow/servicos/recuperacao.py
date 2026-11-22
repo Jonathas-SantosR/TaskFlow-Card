@@ -52,7 +52,7 @@ class ServicoRecuperacao:
             return MENSAGEM_RECUPERACAO
         persistencia = self.repositorio.recuperacao
         reserva = persistencia.reservar_solicitacao(gmail, origem, chave_requisicao)
-        if not reserva["nova"]:
+        if not reserva["nova"]:  # A mesma solicitação não gera outro envio.
             return MENSAGEM_RECUPERACAO
         solicitacao_id = reserva["id"]
         if not self.remetente.configurada:

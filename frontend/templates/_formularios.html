@@ -12,6 +12,6 @@
 {% macro aceite_legal() -%}
   <label class="aceite-legal">
     <input type="checkbox" name="aceitou" value="1" required>
-    <span>Li e aceito os <a href="{{ url_for('termos') }}">Termos de Uso e a Política de Privacidade</a>.</span>
+    <span>Aceito os <a href="{{ url_for('termos') }}#termos">Termos de Uso</a> e declaro ter lido a <a href="{{ url_for('termos') }}#privacidade">Política de Privacidade</a>.</span>
   </label>
 {%- endmacro %}

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from banco_de_dados.migracao_academica import migrar_academico
+from banco_de_dados.migracao_academica import migrar_academico, migrar_salas_por_disciplina
 from banco_de_dados.persistencia.recuperacao import migrar_controle_recuperacao
 
 
@@ -46,6 +46,8 @@ class MigradorBanco:
                 ),
                 (11, "Idade opcional do professor", self.infraestrutura._migrar_idade_professor),
                 (12, "Codigos temporarios para confirmar Gmail no cadastro", self.infraestrutura._migrar_codigos_cadastro),
+                (13, "Salas por disciplina e desempenho por sala",
+                 lambda: migrar_salas_por_disciplina(self.infraestrutura)),
             )
         )
 

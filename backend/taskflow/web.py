@@ -4,8 +4,10 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import (
     Flask,
@@ -36,8 +38,19 @@ from backend.taskflow.gemini import ErroGemini, ServicoGemini
 from backend.taskflow.gmail import RemetenteGmail
 from backend.taskflow.servico import ServicoTaskFlow
 from backend.taskflow.servicos.recuperacao import ServicoRecuperacao
-from banco_de_dados.repositorio import RepositorioTaskFlow
+from banco_de_dados.repositorio import RepositorioTaskFlow, VERSAO_DOCUMENTOS_LEGAIS
 from banco_de_dados.banco import ErroConfiguracaoBanco
+
+
+def formatar_horario_brasilia(valor):
+    """Formata o horário de auditoria sem alterar o valor armazenado."""
+    try:
+        instante = datetime.fromisoformat(valor)
+    except (TypeError, ValueError):
+        return "—"
+    if instante.tzinfo is None:
+        instante = instante.replace(tzinfo=timezone.utc)
+    return instante.astimezone(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y %H:%M:%S")
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +82,7 @@ class GerenciadorSessao:
         usuario_id = session.get("usuario_id")
         if not usuario_id:
             return None
+        # Revalida a conta e a versão da sessão a cada requisição autenticada.
         usuario = self.repositorio.buscar_usuario(usuario_id)
         if (
             usuario is None
@@ -82,6 +96,7 @@ class GerenciadorSessao:
 
     @staticmethod
     def autenticar(usuario):
+        # Descarta o estado anterior e cria um token CSRF para a nova sessão.
         session.clear()
         session.permanent = False
         session["usuario_id"] = usuario.id
@@ -110,6 +125,7 @@ class ProtecaoCsrf:
     def validar_requisicao(cls):
         if request.method != "POST":
             return
+        # Formulários e chamadas JavaScript devem enviar o token da própria sessão.
         esperado = session.get(cls.CHAVE_SESSAO)
         recebido = request.form.get("csrf") or request.headers.get("X-CSRF-Token")
         if not esperado or not recebido or not secrets.compare_digest(esperado, recebido):
@@ -154,7 +170,7 @@ class VisaoInicio(ControladorBase):
 
 class VisaoTermos(ControladorBase):
     def get(self):
-        return render_template("legal.html")
+        return render_template("legal.html", versao_documentos=VERSAO_DOCUMENTOS_LEGAIS)
 
 
 class VisaoPerfis(ControladorBase):
@@ -201,7 +217,7 @@ class VisaoCriarConta(ControladorBase):
         perfil_normalizado = self._perfil(perfil)
         try:
             email = request.form.get("identificador", "")
-            if self._exige_codigo():
+            if self._exige_codigo():  # O Gmail confirmado é o da sessão.
                 email = session.get("cadastro_email", "")
                 if session.get("cadastro_perfil") != perfil_normalizado or not email:
                     raise ErroDominio("Solicite primeiro o código enviado ao Gmail.")
@@ -265,6 +281,7 @@ class VisaoLogin(ControladorBase):
         return render_template("login.html", perfil=self._perfil(perfil))
 
     def post(self, perfil):
+        # A rota define o perfil solicitado para o login de aluno ou professor.
         perfil_normalizado = self._perfil(perfil)
         try:
             servico = self.servico
@@ -274,6 +291,7 @@ class VisaoLogin(ControladorBase):
                 request.form.get("senha", ""),
             )
             self.sessoes.autenticar(usuario)
+            # Direciona para o primeiro acesso ou para o painel do perfil autenticado.
             if usuario.primeiro_acesso or (
                 usuario.eh_aluno
                 and self.dependencias.repositorio.salas.buscar_perfil_aluno(usuario.id) is None
@@ -615,39 +633,52 @@ class VisaoJogar(ControladorProtegido):
             abort(404)
         return modo
 
-    def get(self, modo):
-        modo = self._modo(modo)
+    def _pagina(self, modo, sala, questao=None, resultado=None):
         return render_template(
             "jogar.html",
             modo=modo,
-            questao=self.servico.proxima_questao(modo),
-            sala_academica=self.dependencias.repositorio.salas.sala_academica_aluno(g.usuario.id),
-            resultado=None,
-            desempenho=self.servico.meu_desempenho(modo),
+            questao=questao,
+            sala_academica=sala,
+            resultado=resultado,
+            desempenho=self.servico.meu_desempenho(modo, sala_id=sala.id) if sala else None,
         )
+
+    def get(self, modo):
+        modo = self._modo(modo)
+        try:
+            salas = self.dependencias.repositorio.salas
+            codigo = request.args.get("sala")
+            sala = salas.selecionar_sala_aluno(g.usuario.id, codigo)
+            if sala is None:
+                return redirect(url_for("area_aluno", _anchor="salas"))
+            questao = self.servico.proxima_questao(modo, sala.codigo)
+            return self._pagina(modo, sala, questao)
+        except ErroDominio as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("area_aluno", _anchor="salas"))
 
     def post(self, modo):
         modo = self._modo(modo)
+        salas = self.dependencias.repositorio.salas
+        try:
+            sala = salas.selecionar_sala_aluno(g.usuario.id, request.args.get("sala"))
+        except ErroDominio as erro:
+            flash(str(erro), "erro")
+            return redirect(url_for("area_aluno", _anchor="salas"))
+        if sala is None:
+            return redirect(url_for("area_aluno", _anchor="salas"))
         try:
             questao_id = int(request.form.get("questao_id", "0"))
         except (TypeError, ValueError):
             questao_id = 0
         try:
             resultado = self.servico.responder_questao(
-                questao_id, request.form.get("alternativa", ""), modo
+                questao_id, request.form.get("alternativa", ""), modo, sala.codigo,
             )
         except ErroDominio as erro:
             flash(str(erro), "erro")
-            return redirect(url_for("jogar", modo=modo.lower()))
-        questao = self.servico.buscar_questao(questao_id)
-        return render_template(
-            "jogar.html",
-            modo=modo,
-            questao=questao,
-            sala_academica=self.dependencias.repositorio.salas.sala_academica_aluno(g.usuario.id),
-            resultado=resultado,
-            desempenho=self.servico.meu_desempenho(modo),
-        )
+            return redirect(url_for("jogar", modo=modo.lower(), sala=sala.codigo))
+        return self._pagina(modo, sala, self.servico.buscar_questao(questao_id), resultado)
 
 
 class VisaoSalasProfessor(ControladorProtegido):
@@ -669,6 +700,7 @@ class VisaoSalasProfessor(ControladorProtegido):
                 request.form.get("ano_escolar", ""),
                 request.form.get("turma", ""),
                 request.form.get("sala_escolar", ""),
+                request.form.get("disciplina", ""),
             )
             flash(
                 f"Sala {sala.nome} criada. Alunos da turma serão vinculados automaticamente.",
@@ -704,8 +736,9 @@ class VisaoEditarSalaProfessor(ControladorProtegido):
                 request.form.get("ano_escolar", ""),
                 request.form.get("turma", ""),
                 request.form.get("sala_escolar", ""),
+                request.form.get("disciplina", ""),
             )
-            flash("Sala atualizada e partida reiniciada.", "sucesso")
+            flash("Sala atualizada.", "sucesso")
             return redirect(url_for("salas_professor"))
         except ErroDominio as erro:
             flash(str(erro), "erro")
@@ -728,14 +761,16 @@ class VisaoMultijogador(ControladorProtegido):
     perfil_exigido = PERFIL_ALUNO
 
     def get(self):
-        sala = self.dependencias.repositorio.salas.sala_academica_aluno(g.usuario.id)
-        return render_template("multijogador.html", sala=sala)
+        salas = self.dependencias.repositorio.salas.salas_academicas_aluno(g.usuario.id)
+        return render_template("multijogador.html", salas=salas)
 
     def post(self):
         try:
-            sala_vinculada = self.dependencias.repositorio.salas.sala_academica_aluno(g.usuario.id)
+            sala_vinculada = self.dependencias.repositorio.salas.selecionar_sala_aluno(
+                g.usuario.id, request.form.get("sala"),
+            )
             if sala_vinculada is None:
-                raise ErroDominio("Ainda não há sala vinculada ao seu ano, turma e período.")
+                raise ErroDominio("Escolha uma sala disponível para jogar.")
             sala = self.servico.entrar_sala_multijogador(sala_vinculada.codigo)
             flash("Você entrou na sala.", "sucesso")
             return redirect(url_for("sala_multijogador", codigo=sala.codigo))
@@ -823,16 +858,22 @@ class VisaoDadosAuditoria(ControladorProtegido):
         return render_template("_dados_auditoria.html", eventos=self.servico.listar_auditoria())
 
 
+def estado_lista_salas(salas):
+    return [[sala.codigo, sala.nome, sala.disciplina, sala.status] for sala in salas]
+
+
 class VisaoAreaAluno(ControladorProtegido):
     perfil_exigido = PERFIL_ALUNO
 
     def get(self):
-        salas = self.dependencias.repositorio.salas
+        repositorio = self.dependencias.repositorio.salas
+        salas = repositorio.salas_academicas_aluno(g.usuario.id)
         return render_template(
             "aluno.html",
             desempenho=self.servico.meu_desempenho("BOT"),
-            escolar=salas.buscar_perfil_aluno(g.usuario.id),
-            sala=salas.sala_academica_aluno(g.usuario.id),
+            escolar=repositorio.buscar_perfil_aluno(g.usuario.id),
+            salas=salas,
+            estado_salas=estado_lista_salas(salas),
         )
 
 
@@ -840,8 +881,11 @@ class VisaoDadosSalaAluno(ControladorProtegido):
     perfil_exigido = PERFIL_ALUNO
 
     def get(self):
-        sala = self.dependencias.repositorio.salas.sala_academica_aluno(g.usuario.id)
-        return jsonify({"codigo": sala.codigo if sala else None})
+        salas = self.dependencias.repositorio.salas.salas_academicas_aluno(g.usuario.id)
+        return jsonify({
+            "salas": estado_lista_salas(salas),
+            "codigo": salas[0].codigo if len(salas) == 1 else None,
+        })
 
 
 class VisaoReiniciarTreinoBot(ControladorProtegido):
@@ -998,7 +1042,8 @@ class AplicacaoTaskFlowWeb:
                 "database": os.getenv("TASKFLOW_MYSQL_DATABASE", "taskflowcards"),
                 "ssl_ca": os.getenv("TASKFLOW_MYSQL_SSL_CA", ""),
             }
-        gemini = self.configuracao.pop("GEMINI", None) or ServicoGemini()
+        # A aplicação só usa o Gemini ao receber um serviço configurado explicitamente.
+        gemini = self.configuracao.pop("GEMINI", None) or ServicoGemini(chave="")
         chave_dados = self.configuracao.pop("CHAVE_DADOS", None)
 
         self.app = Flask(
@@ -1006,6 +1051,7 @@ class AplicacaoTaskFlowWeb:
             template_folder=str(self.raiz / "frontend" / "templates"),
             static_folder=str(self.raiz / "frontend" / "static"),
         )
+        self.app.add_template_filter(formatar_horario_brasilia, "horario_brasilia")
         self.app.config.update(
             SECRET_KEY=self._chave_sessao(banco),
             PUBLIC_URL=(
@@ -1083,6 +1129,9 @@ class AplicacaoTaskFlowWeb:
         @self.app.before_request
         def preparar_requisicao():
             g.usuario = self.sessoes.usuario_atual()
+            if request.endpoint in {"ia", "salvar_questao_ia", "adaptar_questao", "narracao_questao"}:
+                if not getattr(self.dependencias.gemini, "configurado", True):
+                    abort(404)
             g.perfil_pendente = False
             acesso_direto = (
                 request.method == "GET"
@@ -1102,7 +1151,7 @@ class AplicacaoTaskFlowWeb:
                     "sala_multijogador",
                     "proxima_rodada_multijogador",
                 }
-                mantendo_partida = (
+                mantendo_partida = (  # Preserva a sessão na atividade da partida.
                     request.endpoint == "atividade_sessao"
                     and session.get("em_partida")
                     and request.headers.get("X-Partida") == "1"
@@ -1114,6 +1163,7 @@ class AplicacaoTaskFlowWeb:
                         "Sua sessão expirou após 10 minutos sem atividade. Entre novamente.", "erro"
                     )
                     return redirect(url_for("inicio"))
+                # As consultas automáticas desses painéis não renovam a atividade da sessão.
                 if request.endpoint not in {"dados_desempenho", "dados_auditoria", "dados_sala_aluno"}:
                     session["ultima_atividade"] = agora
                 if request.endpoint not in {"atividade_sessao", "dados_desempenho", "dados_auditoria", "dados_sala_aluno"}:

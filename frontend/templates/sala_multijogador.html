@@ -11,7 +11,7 @@
      {% endif %}>
 <section class="cabecalho-pagina">
   <p class="rotulo">MULTIJOGADOR ON-LINE</p>
-  <h1>{{ sala.nome }}</h1>
+  <h1>{{ sala.disciplina ~ " · " if sala.disciplina else "" }}{{ sala.nome }}</h1>
   {% if partida_encerrada %}
     <p>Partida finalizada · confira o placar final.</p>
   {% else %}

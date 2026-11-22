@@ -152,15 +152,15 @@ class ServicoTaskFlow(ServicoBase):
     def gerar_narracao(self, questao_id):
         return self.questoes.gerar_narracao(questao_id)
 
-    def proxima_questao(self, modo):
-        return self.jogos.proxima_questao(modo)
+    def proxima_questao(self, modo, codigo_sala=None):
+        return self.jogos.proxima_questao(modo, codigo_sala)
 
-    def responder_questao(self, questao_id, indice_escolhido, modo):
-        return self.jogos.responder_questao(questao_id, indice_escolhido, modo)
+    def responder_questao(self, questao_id, indice_escolhido, modo, codigo_sala=None):
+        return self.jogos.responder_questao(questao_id, indice_escolhido, modo, codigo_sala)
 
-    def criar_sala_multijogador(self, nome, questoes_ids, ano_escolar, turma, sala_escolar):
+    def criar_sala_multijogador(self, nome, questoes_ids, ano_escolar, turma, sala_escolar, disciplina=None):
         return self.salas.criar_sala_multijogador(
-            nome, questoes_ids, ano_escolar, turma, sala_escolar
+            nome, questoes_ids, ano_escolar, turma, sala_escolar, disciplina
         )
 
     def listar_salas_professor(self):
@@ -176,10 +176,10 @@ class ServicoTaskFlow(ServicoBase):
         return self.salas.dados_sala_professor(codigo)
 
     def atualizar_sala_multijogador(
-        self, codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar
+        self, codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar, disciplina=None
     ):
         return self.salas.atualizar_sala_multijogador(
-            codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar
+            codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar, disciplina
         )
 
     def excluir_sala_multijogador(self, codigo):
@@ -197,8 +197,8 @@ class ServicoTaskFlow(ServicoBase):
     def avancar_rodada_multijogador(self, codigo):
         return self.salas.avancar_rodada_multijogador(codigo)
 
-    def meu_desempenho(self, modo=None):
-        return self.desempenho.meu_desempenho(modo)
+    def meu_desempenho(self, modo=None, sala_id=None):
+        return self.desempenho.meu_desempenho(modo, sala_id)
 
     def reiniciar_treino_bot(self):
         return self.desempenho.reiniciar_treino_bot()

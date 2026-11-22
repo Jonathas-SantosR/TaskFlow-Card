@@ -13,7 +13,7 @@
     {% for item in salas %}
       {% set sala = item.sala %}
       <article class="acervo-item">
-        <h3>{{ sala.nome }}</h3>
+        <h3>{{ sala.disciplina ~ " · " if sala.disciplina else "" }}{{ sala.nome }}</h3>
         <p>{{ sala.ano_escolar or 'Ano não informado' }} · Turma {{ sala.turma or 'não informada' }} · Período {{ (sala.sala_escolar|capitalize) if sala.sala_escolar else 'não informado' }}</p>
         <p class="dica">{{ sala.status|title }} · {{ item.total_questoes }} questão(ões) · {{ item.total_matriculados }} aluno(s) vinculado(s)</p>
         <details><summary>Visualizar perguntas da sala</summary>

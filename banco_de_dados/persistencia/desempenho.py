@@ -45,13 +45,16 @@ class RepositorioDesempenho(RepositorioBase):
                 ),
             )
 
-    def desempenho_aluno(self, aluno_id, modo=None):
+    def desempenho_aluno(self, aluno_id, modo=None, sala_id=None):
         consulta = """SELECT COUNT(*) AS total, COALESCE(SUM(correta),0) AS acertos,
             COALESCE(SUM(pontos),0) AS pontos FROM tentativas WHERE aluno_id=?"""
         parametros = [int(aluno_id)]
         if modo:
             consulta += " AND modo=?"
             parametros.append(modo)
+        if sala_id is not None:
+            consulta += " AND sala_id=?"
+            parametros.append(int(sala_id))
         with self._bloqueio:
             linha = self.conexao.execute(consulta, parametros).fetchone()
         return Desempenho(
@@ -60,26 +63,35 @@ class RepositorioDesempenho(RepositorioBase):
             pontos=int(linha["pontos"]),
         )
 
-    def acertos_recentes(self, aluno_id, limite=6, modo=None):
+    def acertos_recentes(self, aluno_id, limite=6, modo=None, sala_id=None):
         consulta = "SELECT correta FROM tentativas WHERE aluno_id=?"
         parametros = [int(aluno_id)]
         if modo:
             consulta += " AND modo=?"
             parametros.append(modo)
+        if sala_id is not None:
+            consulta += " AND sala_id=?"
+            parametros.append(int(sala_id))
         consulta += " ORDER BY id DESC LIMIT ?"
         parametros.append(int(limite))
         with self._bloqueio:
             linhas = self.conexao.execute(consulta, parametros).fetchall()
         return [bool(linha["correta"]) for linha in linhas]
 
-    def listar_desempenho_turma(self, filtros=None):
+    def listar_desempenho_turma(self, filtros=None, professor_id=None):
         filtros = filtros or {}
         condicoes = ["aluno_id IS NOT NULL"]
         parametros = []
-        for campo in ("aluno_id", "modo", "dificuldade"):
+        for campo in ("aluno_id", "modo", "dificuldade", "sala_id"):
             if filtros.get(campo):
                 condicoes.append(f"{campo}=?")
                 parametros.append(filtros[campo])
+        if professor_id is not None:  # O filtro restringe as tentativas às salas do professor.
+            condicoes.append("""EXISTS (
+                SELECT 1 FROM salas_multijogador s
+                WHERE s.id=tentativas.sala_id AND s.criador_id=?
+            )""")
+            parametros.append(int(professor_id))
         for campo, operador in (("inicio_utc", ">="), ("fim_utc", "<")):
             if filtros.get(campo):
                 condicoes.append(f"respondida_em {operador} ?")

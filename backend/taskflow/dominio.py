@@ -109,6 +109,7 @@ class SalaMultijogador:
     turma: str = ""
     sala_escolar: str = ""
     chave_academica: str | None = None
+    disciplina: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

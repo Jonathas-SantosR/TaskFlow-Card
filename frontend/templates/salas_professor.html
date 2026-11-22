@@ -6,7 +6,7 @@
 <section class="cabecalho-pagina">
   <p class="rotulo">ORGANIZAÇÃO ESCOLAR</p>
   <h1>Salas on-line</h1>
-  <p>Organize as questões por ano escolar, turma e período. Os professores compartilham o acesso às salas.</p>
+  <p>Organize as questões das suas salas por disciplina, ano escolar, turma e período.</p>
 </section>
 
 <section class="duas-colunas sala-layout">
@@ -16,6 +16,10 @@
     <label class="campo">
       <span>Nome da sala</span>
       <input name="nome" value="{{ request.form.get('nome', '') }}" minlength="3" maxlength="80" required placeholder="Ex.: Revisão de Matemática">
+    </label>
+    <label class="campo">
+      <span>Disciplina</span>
+      <input name="disciplina" minlength="2" maxlength="60" required placeholder="Ex.: Ciências" value="{{ request.form.get('disciplina', '') }}">
     </label>
     {{ campos_sala_academica() }}
     {% if questoes %}
@@ -41,7 +45,8 @@
       {% for item in salas %}
         <div>
           <span><strong>{{ item.sala.nome }}</strong> · {{ item.sala.status|title }}</span>
-          <strong>{{ item.total_matriculados }} matriculado(s)</strong>
+          <strong>{{ item.total_matriculados }} aluno(s) vinculado(s)</strong>
+          <small>{{ item.sala.disciplina or "Disciplina ainda não informada" }}</small>
           {% if item.sala.ano_escolar in ['6º ANO','7º ANO','8º ANO','9º ANO'] and item.sala.sala_escolar in ['MANHÃ','TARDE','INTEGRAL'] %}<small>{{ item.sala.ano_escolar }} · Turma {{ item.sala.turma }} · Período {{ item.sala.sala_escolar|capitalize }}</small>{% else %}<small>Classificação antiga: edite esta sala e selecione ano escolar e período.</small>{% endif %}
           <small>Rodada {{ item.sala.rodada }} de {{ item.total_questoes }} questão(ões)</small>
           <small>{{ item.total_alunos }} participante(s) na partida atual. O treino individual usa as questões ativas desta sala.</small>

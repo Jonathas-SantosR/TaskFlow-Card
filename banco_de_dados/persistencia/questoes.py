@@ -130,7 +130,7 @@ class RepositorioQuestoes(RepositorioBase):
         if cursor.rowcount != 1:
             raise ErroDominio("Questão não encontrada.")
 
-    def selecionar_questao(self, dificuldade=None, aluno_id=None):
+    def selecionar_questao(self, dificuldade=None, aluno_id=None, sala_id=None):
         """Escolhe a questão menos recente, sem repetir enquanto houver outra."""
 
         if aluno_id is None:
@@ -146,6 +146,7 @@ class RepositorioQuestoes(RepositorioBase):
                 SELECT questao_id, MAX(id) AS ultima_tentativa
                 FROM tentativas
                 WHERE aluno_id=? AND modo='BOT' AND questao_id IS NOT NULL
+                AND sala_id=COALESCE(?,sala_id)
                 GROUP BY questao_id
             ) historico ON historico.questao_id=q.id
             WHERE q.ativa=1
@@ -154,7 +155,7 @@ class RepositorioQuestoes(RepositorioBase):
                 JOIN usuarios u ON u.id=a.aluno_id AND u.ativo=1 AND u.perfil='ALUNO'
                 JOIN salas_multijogador s ON s.chave_academica=a.chave_academica
                 JOIN questoes_sala_multijogador sq ON sq.sala_id=s.id
-                WHERE a.aluno_id=? AND sq.questao_id=q.id
+                WHERE a.aluno_id=? AND sq.questao_id=q.id AND s.id=COALESCE(?,s.id)
             )
             ORDER BY
                 CASE WHEN historico.ultima_tentativa IS NULL THEN 0 ELSE 1 END,
@@ -162,25 +163,25 @@ class RepositorioQuestoes(RepositorioBase):
                 CASE WHEN q.dificuldade=? THEN 0 ELSE 1 END,
                 RANDOM()
             LIMIT 1"""
-            parametros = [int(aluno_id), int(aluno_id), dificuldade or ""]
+            parametros = [int(aluno_id), sala_id, int(aluno_id), sala_id, dificuldade or ""]
         with self._bloqueio:
             linha = self.conexao.execute(consulta, parametros).fetchone()
         return self._questao(linha)
 
-    def registrar_resposta_bot(self, aluno_id, questao, indice_escolhido, correta, pontos):
+    def registrar_resposta_bot(self, aluno_id, questao, indice_escolhido, correta, pontos, sala_id):
         """Confere a autorização na própria gravação, inclusive se a sala mudou."""
 
         with self._bloqueio, self.conexao:
             cursor = self.conexao.execute(
                 """INSERT INTO tentativas
-                (aluno_id,questao_id,modo,dificuldade,indice_escolhido,correta,pontos,respondida_em)
-                SELECT a.aluno_id,q.id,'BOT',q.dificuldade,?,?,?,?
+                (aluno_id,questao_id,modo,dificuldade,indice_escolhido,correta,pontos,respondida_em,sala_id)
+                SELECT a.aluno_id,q.id,'BOT',q.dificuldade,?,?,?,?,s.id
                 FROM perfil_aluno a
                 JOIN usuarios u ON u.id=a.aluno_id AND u.ativo=1 AND u.perfil='ALUNO'
                 JOIN salas_multijogador s ON s.chave_academica=a.chave_academica
                 JOIN questoes_sala_multijogador sq ON sq.sala_id=s.id
                 JOIN questoes q ON q.id=sq.questao_id AND q.ativa=1
-                WHERE a.aluno_id=? AND q.id=? AND q.dificuldade=?
+                WHERE a.aluno_id=? AND s.id=? AND q.id=? AND q.dificuldade=?
                 AND q.indice_correto=? AND q.alternativas_json=?""",
                 (
                     int(indice_escolhido),
@@ -188,6 +189,7 @@ class RepositorioQuestoes(RepositorioBase):
                     int(pontos),
                     self._agora(),
                     int(aluno_id),
+                    int(sala_id),
                     questao.id,
                     questao.dificuldade,
                     questao.indice_correto,

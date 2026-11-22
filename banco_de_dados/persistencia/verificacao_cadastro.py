@@ -36,7 +36,7 @@ class RepositorioVerificacaoCadastro(RepositorioBase):
                 janela = inicio if dentro_da_janela else agora
             else:
                 quantidade, janela = 0, agora
-            codigo = f"{secrets.randbelow(1_000_000):06d}"
+            codigo = f"{secrets.randbelow(1_000_000):06d}"  # Só o resumo vai para o banco.
             resumo = self.criptografia.indice(f"cadastro:{perfil}:{email}:{codigo}")
             expira = (agora + timedelta(minutes=10)).isoformat()
             if linha:
@@ -74,7 +74,7 @@ class RepositorioVerificacaoCadastro(RepositorioBase):
                     "WHERE perfil=? AND chave_email=?", (perfil, chave)
                 )
                 valido = False
-            else:
+            else:  # Remove o desafio confirmado antes de criar a conta.
                 self.conexao.execute(
                     "DELETE FROM codigos_cadastro WHERE perfil=? AND chave_email=?", (perfil, chave)
                 )

@@ -37,6 +37,7 @@ class RepositorioSalas(RepositorioBase):
             turma=linha["turma"] or "",
             sala_escolar=linha["sala_escolar"] or "",
             chave_academica=linha["chave_academica"],
+            disciplina=linha["disciplina"],
         )
 
     @staticmethod
@@ -46,7 +47,7 @@ class RepositorioSalas(RepositorioBase):
         return dict(ano_escolar=None, turma=None, sala_escolar=None, chave_academica=None)
 
     def criar_sala_multijogador(
-        self, codigo, nome, criador_id, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+        self, codigo, nome, criador_id, questoes_ids, ano_escolar="", turma="", sala_escolar="", disciplina=None
     ):
         """Cria uma sala do professor com a sequência escolhida de questões."""
 
@@ -59,8 +60,8 @@ class RepositorioSalas(RepositorioBase):
                 cursor = self.conexao.execute(
                     """INSERT INTO salas_multijogador
                     (codigo,nome,criador_id,questao_id,rodada,status,criada_em,
-                    ano_escolar,turma,sala_escolar,chave_academica)
-                    VALUES(?,?,?,?,1,'ABERTA',?,?,?,?,?)""",
+                    ano_escolar,turma,sala_escolar,chave_academica,disciplina)
+                    VALUES(?,?,?,?,1,'ABERTA',?,?,?,?,?,?)""",
                     (
                         codigo,
                         nome,
@@ -71,6 +72,7 @@ class RepositorioSalas(RepositorioBase):
                         dados["turma"],
                         dados["sala_escolar"],
                         dados["chave_academica"],
+                        disciplina,
                     ),
                 )
                 self.conexao.executemany(
@@ -83,8 +85,7 @@ class RepositorioSalas(RepositorioBase):
                 )
         except (sqlite3.IntegrityError, ErroIntegridadeBanco) as erro:
             raise ErroDominio(
-                "Já existe uma sala com esse ano escolar, turma e período. "
-                "Edite a sala existente ou confira os dados."
+                "Não foi possível criar a sala. Tente novamente."
             ) from erro
         return self.buscar_sala_multijogador(codigo)
 
@@ -137,7 +138,7 @@ class RepositorioSalas(RepositorioBase):
         return [int(linha["questao_id"]) for linha in linhas]
 
     def atualizar_sala_multijogador(
-        self, sala_id, nome, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+        self, sala_id, nome, questoes_ids, ano_escolar="", turma="", sala_escolar="", disciplina=None
     ):
         """Troca a sequência e reinicia rodada, respostas e placar da sala."""
 
@@ -156,10 +157,19 @@ class RepositorioSalas(RepositorioBase):
                 ).fetchone()
                 if anterior is None:
                     raise ErroDominio("Sala não encontrada.")
+                if (anterior["chave_academica"] == dados["chave_academica"]
+                        and self.questoes_ids_sala_multijogador(sala_id) == questoes_ids):
+                    self.conexao.execute(
+                        """UPDATE salas_multijogador SET nome=?, disciplina=COALESCE(?,disciplina)
+                        WHERE id=?""", (nome, disciplina, sala_id),
+                    )
+                    self.conexao.commit()
+                    return
                 cursor = self.conexao.execute(
                     """UPDATE salas_multijogador
                     SET nome=?,questao_id=?,rodada=1,status='ABERTA',
-                    ano_escolar=?,turma=?,sala_escolar=?,chave_academica=? WHERE id=?""",
+                    ano_escolar=?,turma=?,sala_escolar=?,chave_academica=?,
+                    disciplina=COALESCE(?,disciplina) WHERE id=?""",
                     (
                         nome,
                         questoes_ids[0],
@@ -167,6 +177,7 @@ class RepositorioSalas(RepositorioBase):
                         dados["turma"],
                         dados["sala_escolar"],
                         dados["chave_academica"],
+                        disciplina,
                         sala_id,
                     ),
                 )
@@ -182,10 +193,12 @@ class RepositorioSalas(RepositorioBase):
                 ):
                     self.conexao.execute(
                         """UPDATE perfil_aluno SET sala_escolar=?,chave_academica=?,
-                        atualizado_em=? WHERE chave_academica=?""",
+                        atualizado_em=? WHERE chave_academica=? AND NOT EXISTS (
+                            SELECT 1 FROM salas_multijogador WHERE chave_academica=?
+                        )""",
                         (
                             dados["sala_escolar"], dados["chave_academica"],
-                            self._agora(), anterior["chave_academica"],
+                            self._agora(), anterior["chave_academica"], anterior["chave_academica"],
                         ),
                     )
                 self.conexao.execute(
@@ -220,7 +233,7 @@ class RepositorioSalas(RepositorioBase):
                 if self.conexao.in_transaction:
                     self.conexao.rollback()
                 raise ErroDominio(
-                    "Já existe uma sala com esse ano escolar, turma e período."
+                    "Não foi possível atualizar a sala."
                 ) from erro
             except Exception:
                 if self.conexao.in_transaction:
@@ -314,18 +327,29 @@ class RepositorioSalas(RepositorioBase):
             )
         return self.buscar_perfil_aluno(aluno_id)
 
-    def sala_academica_aluno(self, aluno_id):
-        """A associação acompanha criação/exclusão/alteração de salas pela classificação."""
-
+    def salas_academicas_aluno(self, aluno_id):
+        """Lista as salas que correspondem ao perfil escolar atual do aluno."""
         with self._bloqueio:
-            linha = self.conexao.execute(
+            linhas = self.conexao.execute(
                 """SELECT s.* FROM salas_multijogador s
                 JOIN perfil_aluno a ON a.chave_academica=s.chave_academica
                 JOIN usuarios u ON u.id=a.aluno_id AND u.ativo=1 AND u.perfil='ALUNO'
-                WHERE a.aluno_id=?""",
+                WHERE a.aluno_id=? ORDER BY s.disciplina,s.nome,s.id""",
                 (int(aluno_id),),
-            ).fetchone()
-        return self._sala_multijogador(linha)
+            ).fetchall()
+        return [self._sala_multijogador(linha) for linha in linhas]
+
+    def sala_academica_aluno(self, aluno_id):
+        salas = self.salas_academicas_aluno(aluno_id)
+        return salas[0] if len(salas) == 1 else None
+
+    def selecionar_sala_aluno(self, aluno_id, codigo=None):
+        if not codigo:  # A seleção automática exige uma única sala compatível.
+            return self.sala_academica_aluno(aluno_id)
+        sala = self.buscar_sala_multijogador(str(codigo).strip().upper())
+        if sala is None or not self.aluno_pertence_sala(aluno_id, sala.id):
+            raise ErroDominio("Esta sala não corresponde ao seu cadastro escolar.")
+        return sala
 
     def aluno_pertence_sala(self, aluno_id, sala_id):
         with self._bloqueio:
@@ -338,7 +362,7 @@ class RepositorioSalas(RepositorioBase):
             ).fetchone()
         return linha is not None
 
-    def questao_autorizada_aluno(self, aluno_id, questao_id):
+    def questao_autorizada_aluno(self, aluno_id, questao_id, sala_id=None):
         with self._bloqueio:
             linha = self.conexao.execute(
                 """SELECT 1 FROM perfil_aluno a
@@ -346,8 +370,9 @@ class RepositorioSalas(RepositorioBase):
                 JOIN salas_multijogador s ON s.chave_academica=a.chave_academica
                 JOIN questoes_sala_multijogador sq ON sq.sala_id=s.id
                 JOIN questoes q ON q.id=sq.questao_id AND q.ativa=1
-                WHERE a.aluno_id=? AND q.id=?""",
-                (int(aluno_id), int(questao_id)),
+                WHERE a.aluno_id=? AND q.id=? AND (COALESCE(?,s.id)=s.id)
+                LIMIT 1""",
+                (int(aluno_id), int(questao_id), sala_id),
             ).fetchone()
         return linha is not None
 
@@ -404,7 +429,7 @@ class RepositorioSalas(RepositorioBase):
         self, sala, aluno_id, questao, indice_escolhido, correta, pontos
     ):
         """Registra uma única resposta por estudante e rodada."""
-
+        # Resposta, placar e tentativa são gravados na mesma transação.
         try:
             with self._bloqueio, self.conexao:
                 self.conexao.execute("BEGIN IMMEDIATE")
@@ -424,7 +449,7 @@ class RepositorioSalas(RepositorioBase):
                     or atual["questao_id"] != questao.id
                     or participa is None
                     or not self.aluno_pertence_sala(aluno_id, sala.id)
-                    or not self.questao_autorizada_aluno(aluno_id, questao.id)
+                    or not self.questao_autorizada_aluno(aluno_id, questao.id, sala.id)
                 ):
                     raise ErroDominio("A rodada foi atualizada. Recarregue a sala.")
                 total = self.conexao.execute(
@@ -457,8 +482,8 @@ class RepositorioSalas(RepositorioBase):
                 self.conexao.execute(
                     """INSERT INTO tentativas (
                     aluno_id,questao_id,modo,dificuldade,indice_escolhido,
-                    correta,pontos,respondida_em
-                    ) VALUES(?,?,?,?,?,?,?,?)""",
+                    correta,pontos,respondida_em,sala_id
+                    ) VALUES(?,?,?,?,?,?,?,?,?)""",
                     (
                         int(aluno_id),
                         questao.id,
@@ -468,6 +493,7 @@ class RepositorioSalas(RepositorioBase):
                         1 if correta else 0,
                         int(pontos),
                         self._agora(),
+                        sala.id,
                     ),
                 )
         except (sqlite3.IntegrityError, ErroIntegridadeBanco) as erro:
@@ -475,7 +501,7 @@ class RepositorioSalas(RepositorioBase):
 
     def avancar_rodada_multijogador(self, sala):
         """Avança com segurança quando todos responderam ou encerra a sequência."""
-
+        # O UPDATE confere a rodada para impedir dois avanços da mesma etapa.
         with self._bloqueio, self.conexao:
             self.conexao.execute("BEGIN IMMEDIATE")
             atual = self.conexao.execute(

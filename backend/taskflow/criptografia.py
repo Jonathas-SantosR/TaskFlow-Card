@@ -71,6 +71,7 @@ class CriptografiaDados:
 
     def criptografar(self, valor):
         texto = str(valor)
+        # Campos que precisam ser lidos depois usam criptografia autenticada Fernet.
         token = self._fernet.encrypt(texto.encode("utf-8")).decode("ascii")
         return f"{self.PREFIXO_DADO}{token}"
 
@@ -159,6 +160,7 @@ class AssinadorAuditoria:
         ).encode("utf-8")
 
     def assinar(self, campos):
+        # A serialização determinística permite verificar os campos com a chave pública.
         assinatura = self._chave_privada.sign(self._mensagem(campos))
         return base64.urlsafe_b64encode(assinatura).decode("ascii")
 

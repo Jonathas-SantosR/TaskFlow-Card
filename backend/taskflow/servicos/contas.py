@@ -89,6 +89,7 @@ class ServicoContas(ServicoBase):
         return quantidade >= 5
 
     def login(self, perfil, identificador, senha):
+        # O limite de tentativas fica em memória por perfil e identificador normalizado.
         chave = self._chave_tentativa(perfil, identificador)
         if self._bloqueado(chave):
             raise ErroDominio("Muitas tentativas. Aguarde 15 minutos.")
@@ -214,7 +215,7 @@ class ServicoContas(ServicoBase):
             raise ErroDominio(f'Digite "{modo}" para confirmar a solicitação.')
         if not self.repositorio.conferir_senha_usuario(usuario.id, senha):
             raise ErroDominio("Senha atual incorreta.")
-
+        # A operação é sobre a própria conta, após validar a senha e a intenção.
         if modo == "ANONIMIZAR":
             self.repositorio.anonimizar_usuario(usuario.id)
             evento = "CONTA_ANONIMIZADA"

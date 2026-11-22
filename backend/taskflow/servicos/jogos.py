@@ -5,8 +5,8 @@ from backend.taskflow.servicos.base import ServicoBase
 
 
 class ServicoJogos(ServicoBase):
-    def _dificuldade_adaptativa(self, aluno_id):
-        recentes = self.repositorio.acertos_recentes(aluno_id, modo="BOT")
+    def _dificuldade_adaptativa(self, aluno_id, sala_id):
+        recentes = self.repositorio.acertos_recentes(aluno_id, modo="BOT", sala_id=sala_id)
         if len(recentes) < 3:
             return "MÉDIO"
         aproveitamento = sum(recentes) / len(recentes)
@@ -16,26 +16,30 @@ class ServicoJogos(ServicoBase):
             return "DIFÍCIL"
         return "MÉDIO"
 
-    def proxima_questao(self, modo):
+    def proxima_questao(self, modo, codigo_sala=None):
         aluno = self._aluno()
         modo = str(modo or "").strip().upper()
         if modo not in MODOS_JOGO:
             raise ErroDominio("Modo de jogo inválido.")
         if modo != "BOT":
             raise ErroDominio("Entre em uma sala para jogar o modo multijogador.")
-        dificuldade = self._dificuldade_adaptativa(aluno.id)
-        return self.repositorio.selecionar_questao(dificuldade, aluno_id=aluno.id)
+        sala = self.repositorio.salas.selecionar_sala_aluno(aluno.id, codigo_sala)
+        if sala is None:
+            return None
+        dificuldade = self._dificuldade_adaptativa(aluno.id, sala.id)  # Histórico da sala.
+        return self.repositorio.selecionar_questao(dificuldade, aluno_id=aluno.id, sala_id=sala.id)
 
-    def responder_questao(self, questao_id, indice_escolhido, modo):
+    def responder_questao(self, questao_id, indice_escolhido, modo, codigo_sala=None):
         aluno = self._aluno()
         modo = str(modo or "").strip().upper()
         if modo not in MODOS_JOGO:
             raise ErroDominio("Modo de jogo inválido.")
         if modo != "BOT":
             raise ErroDominio("Entre em uma sala para responder no multijogador.")
-        questao = self.repositorio.buscar_questao(questao_id)
-        if questao is None or not self.repositorio.salas.questao_autorizada_aluno(
-            aluno.id, questao.id
+        sala = self.repositorio.salas.selecionar_sala_aluno(aluno.id, codigo_sala)
+        questao = self.repositorio.buscar_questao(questao_id)  # O ID não comprova acesso.
+        if sala is None or questao is None or not self.repositorio.salas.questao_autorizada_aluno(
+            aluno.id, questao.id, sala.id
         ):
             raise ErroDominio("Esta questão não está disponível para sua sala.")
         try:
@@ -56,6 +60,7 @@ class ServicoJogos(ServicoBase):
             indice_escolhido,
             correta,
             pontos,
+            sala.id,
         )
         self.repositorio.registrar_evento(
             aluno.perfil,

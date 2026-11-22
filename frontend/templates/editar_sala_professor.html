@@ -14,6 +14,10 @@
     <span>Nome da sala</span>
     <input name="nome" value="{{ request.form.get('nome', sala.nome) }}" minlength="3" maxlength="80" required>
   </label>
+  <label class="campo">
+    <span>Disciplina</span>
+    <input name="disciplina" minlength="2" maxlength="60" required placeholder="Ex.: Ciências" value="{{ request.form.get('disciplina', sala.disciplina or '') }}">
+  </label>
   {{ campos_sala_academica(sala) }}
   <p class="dica">Se mudar o ano ou a turma, confira o vínculo dos alunos com a nova classificação. Ao trocar apenas o antigo número da sala por um período, os vínculos da turma são mantidos.</p>
   <h2>Questões da sala</h2>

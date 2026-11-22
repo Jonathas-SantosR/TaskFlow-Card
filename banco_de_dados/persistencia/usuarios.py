@@ -156,6 +156,7 @@ class RepositorioUsuarios(RepositorioBase):
         return self._usuario(linha) if linha else None
 
     def autenticar(self, perfil, identificador, senha):
+        # A busca da conta ativa pelo perfil precede a verificação da senha pelo hash.
         linha = self._linha_por_login(perfil, identificador)
         if linha is None or not conferir_senha(senha, linha["senha_hash"]):
             return None
@@ -437,7 +438,7 @@ class RepositorioUsuarios(RepositorioBase):
 
     def excluir_usuario_definitivamente(self, usuario_id):
         """Apaga cadastro e aceite, retirando vínculos restantes da auditoria."""
-
+        # Os vínculos pessoais e a conta são removidos na mesma transação.
         usuario_id = int(usuario_id)
         with self._bloqueio, self.conexao:
             self._remover_vinculos_pessoais(usuario_id)

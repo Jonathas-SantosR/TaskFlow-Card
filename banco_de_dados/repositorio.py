@@ -14,12 +14,16 @@ from banco_de_dados.persistencia.usuarios import RepositorioUsuarios
 from banco_de_dados.persistencia.verificacao_cadastro import RepositorioVerificacaoCadastro
 
 
+VERSAO_DOCUMENTOS_LEGAIS = "2026-11-v5"
+
+
 class RepositorioTaskFlow(RepositorioBase):
     def __init__(self, caminho, chave_dados=None, configuracao_mysql=None, postgres_url=None):
         super().__init__(InfraestruturaBanco(
             caminho, chave_dados, configuracao_mysql, postgres_url
         ))
         self.auditoria = RepositorioAuditoria(self._infraestrutura)
+        self.auditoria.limpar_eventos_expirados()
         self.usuarios = RepositorioUsuarios(self._infraestrutura, self.auditoria)
         self.verificacao_cadastro = RepositorioVerificacaoCadastro(self._infraestrutura, self.usuarios)
         self.recuperacao = RepositorioRecuperacao(self._infraestrutura, self.usuarios)
@@ -39,8 +43,8 @@ class RepositorioTaskFlow(RepositorioBase):
     def criar_usuario(self, perfil, nome, identificador, senha, primeiro_acesso=False):
         return self.usuarios.criar_usuario(perfil, nome, identificador, senha, primeiro_acesso)
 
-    def criar_aluno(self, nome, matricula, senha):
-        return self.usuarios.criar_aluno(nome, matricula, senha)
+    def criar_aluno(self, nome, gmail, senha):
+        return self.usuarios.criar_aluno(nome, gmail, senha)
 
     def buscar_usuario(self, usuario_id):
         return self.usuarios.buscar_usuario(usuario_id)
@@ -99,7 +103,7 @@ class RepositorioTaskFlow(RepositorioBase):
                 self.conexao.execute(
                     """INSERT INTO aceites(usuario_id,termos_versao,privacidade_versao,aceito_em)
                     VALUES(?,?,?,?)""",
-                    (aluno_id, "2026-11-v4", "2026-11-v4", self._agora()),
+                    (aluno_id, VERSAO_DOCUMENTOS_LEGAIS, VERSAO_DOCUMENTOS_LEGAIS, self._agora()),
                 )
                 self.conexao.commit()
             except Exception:
@@ -132,7 +136,9 @@ class RepositorioTaskFlow(RepositorioBase):
     def recuperar_senha_professor(self, email, codigo, nova_senha):
         return self.usuarios.recuperar_senha_professor(email, codigo, nova_senha)
 
-    def registrar_aceite(self, usuario_id, termos="2026-11-v4", privacidade="2026-11-v4"):
+    def registrar_aceite(
+        self, usuario_id, termos=VERSAO_DOCUMENTOS_LEGAIS, privacidade=VERSAO_DOCUMENTOS_LEGAIS,
+    ):
         return self.usuarios.registrar_aceite(usuario_id, termos, privacidade)
 
     def conferir_senha_usuario(self, usuario_id, senha):
@@ -171,25 +177,25 @@ class RepositorioTaskFlow(RepositorioBase):
     def excluir_questao(self, questao_id):
         return self.questoes.excluir_questao(questao_id)
 
-    def selecionar_questao(self, dificuldade=None, aluno_id=None):
-        return self.questoes.selecionar_questao(dificuldade, aluno_id)
+    def selecionar_questao(self, dificuldade=None, aluno_id=None, sala_id=None):
+        return self.questoes.selecionar_questao(dificuldade, aluno_id, sala_id)
 
     def registrar_tentativa(self, aluno_id, questao, modo, indice_escolhido, correta, pontos):
         return self.desempenho.registrar_tentativa(
             aluno_id, questao, modo, indice_escolhido, correta, pontos
         )
 
-    def desempenho_aluno(self, aluno_id, modo=None):
-        return self.desempenho.desempenho_aluno(aluno_id, modo)
+    def desempenho_aluno(self, aluno_id, modo=None, sala_id=None):
+        return self.desempenho.desempenho_aluno(aluno_id, modo, sala_id)
 
     def reiniciar_treino_bot(self, aluno_id):
         return self.desempenho.reiniciar_treino_bot(aluno_id)
 
-    def acertos_recentes(self, aluno_id, limite=6, modo=None):
-        return self.desempenho.acertos_recentes(aluno_id, limite, modo)
+    def acertos_recentes(self, aluno_id, limite=6, modo=None, sala_id=None):
+        return self.desempenho.acertos_recentes(aluno_id, limite, modo, sala_id)
 
-    def listar_desempenho_turma(self, filtros=None):
-        return self.desempenho.listar_desempenho_turma(filtros)
+    def listar_desempenho_turma(self, filtros=None, professor_id=None):
+        return self.desempenho.listar_desempenho_turma(filtros, professor_id)
 
     def listar_escolaridade_alunos(self):
         return self.desempenho.listar_escolaridade_alunos()

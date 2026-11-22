@@ -3,7 +3,7 @@ from enum import Enum
 import re
 from zoneinfo import ZoneInfo
 
-from backend.taskflow.dominio import MODOS_JOGO, NIVEIS_DIFICULDADE, ErroDominio
+from backend.taskflow.dominio import MODOS_JOGO, NIVEIS_DIFICULDADE, Desempenho, ErroDominio
 from backend.taskflow.servicos.base import ServicoBase
 
 
@@ -13,7 +13,8 @@ def normalizar_filtros_dashboard(valores=None):
     valores = valores or {}
     filtros = {
         campo: str(valores.get(campo, "") or "").strip()
-        for campo in ("aluno_id", "data_inicio", "data_fim", "bimestre", "modo", "dificuldade", "situacao", "turma", "faixa")
+        for campo in ("aluno_id", "sala_id", "data_inicio", "data_fim", "bimestre", "modo",
+                      "dificuldade", "situacao", "turma", "faixa")
     }
     for campo, opcoes, mensagem in (
         ("modo", MODOS_JOGO, "Modo de jogo inválido."),
@@ -27,7 +28,14 @@ def normalizar_filtros_dashboard(valores=None):
         raise ErroDominio("Selecione uma turma válida.")
     if filtros["faixa"] and filtros["faixa"] not in FaixaDesempenho.__members__:
         raise ErroDominio("Selecione uma faixa de desempenho válida.")
+    if filtros["sala_id"]:
+        if not re.fullmatch(r"[1-9][0-9]{0,18}", filtros["sala_id"]):
+            raise ErroDominio("Selecione uma sala válida.")
+        if int(filtros["sala_id"]) > 9_223_372_036_854_775_807:
+            raise ErroDominio("Selecione uma sala válida.")
     consulta = dict(filtros)
+    if filtros["sala_id"]:
+        consulta["sala_id"] = int(filtros["sala_id"])
     if filtros["bimestre"]:
         correspondencia = re.fullmatch(r"(20\d{2})-([1-6])", filtros["bimestre"])
         if not correspondencia:
@@ -105,11 +113,9 @@ class FaixaDesempenho(Enum):
 
 
 class ServicoDesempenho(ServicoBase):
-    def meu_desempenho(self, modo=None):
+    def meu_desempenho(self, modo=None, sala_id=None):
         aluno = self._aluno()
-        if modo is None:
-            return self.repositorio.desempenho_aluno(aluno.id)
-        return self.repositorio.desempenho_aluno(aluno.id, modo=modo)
+        return self.repositorio.desempenho_aluno(aluno.id, modo=modo, sala_id=sala_id)
 
     def reiniciar_treino_bot(self):
         aluno = self._aluno()
@@ -123,11 +129,11 @@ class ServicoDesempenho(ServicoBase):
         professor = self._professor()
         alunos = {aluno.id: aluno for aluno in self.repositorio.listar_alunos(professor.id)}
         resultados = []
-        for linha in self.repositorio.listar_desempenho_turma():
+        for linha in self.repositorio.listar_desempenho_turma(professor_id=professor.id):
             aluno = alunos.get(linha["aluno_id"])
             if aluno is None:
                 continue
-            desempenho = self.repositorio.desempenho_aluno(aluno.id)
+            desempenho = Desempenho(int(linha["total"]), int(linha["acertos"]), int(linha["pontos"]))
             resultados.append((aluno, desempenho))
         return resultados
 
@@ -135,6 +141,11 @@ class ServicoDesempenho(ServicoBase):
         professor = self._professor()
         filtros, consulta = normalizar_filtros_dashboard(filtros)
         cadastrados = self.repositorio.listar_alunos(professor.id)
+        salas = [item["sala"] for item in self.repositorio.listar_salas_professor(professor.id)]
+        salas_por_id = {sala.id: sala for sala in salas}
+        sala_selecionada = salas_por_id.get(consulta.get("sala_id"))
+        if filtros["sala_id"] and sala_selecionada is None:
+            raise ErroDominio("Selecione uma das suas salas.")
         escolaridade = self.repositorio.listar_escolaridade_alunos()
         turmas = {
             perfil["chave_academica"]: (
@@ -145,7 +156,8 @@ class ServicoDesempenho(ServicoBase):
             if (perfil := escolaridade.get(aluno.id)) and perfil.get("chave_academica")
         }
         dados = {
-            linha["aluno_id"]: linha for linha in self.repositorio.listar_desempenho_turma(consulta)
+            linha["aluno_id"]: linha
+            for linha in self.repositorio.listar_desempenho_turma(consulta, professor_id=professor.id)
         }
         contagem = {faixa: 0 for faixa in FaixaDesempenho}
         alunos = []
@@ -156,6 +168,11 @@ class ServicoDesempenho(ServicoBase):
                 continue
             perfil = escolaridade.get(aluno.id)
             if filtros["turma"] and (not perfil or perfil["chave_academica"] != filtros["turma"]):
+                continue
+            if sala_selecionada and not (
+                (perfil and perfil["chave_academica"] == sala_selecionada.chave_academica)
+                or aluno.id in dados
+            ):
                 continue
             registro = dados.get(aluno.id, {})
             total = int(registro.get("total", 0))
@@ -190,6 +207,7 @@ class ServicoDesempenho(ServicoBase):
                 for numero, meses in enumerate(("jan–fev", "mar–abr", "mai–jun", "jul–ago", "set–out", "nov–dez"), 1)
             ],
             "opcoes_alunos": cadastrados,
+            "opcoes_salas": salas,
             "opcoes_turmas": sorted(turmas.items(), key=lambda item: item[1].casefold()),
             "opcoes_faixas": list(FaixaDesempenho),
             "filtrado": any(filtros.values()),

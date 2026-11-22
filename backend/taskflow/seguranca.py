@@ -30,6 +30,7 @@ def validar_codigo_recuperacao(codigo):
 
 def criar_hash(senha):
     senha = validar_senha(senha)
+    # Cada hash recebe um sal aleatório para diferenciar registros de senhas iguais.
     sal = secrets.token_bytes(16)
     derivada = hashlib.pbkdf2_hmac("sha256", senha.encode("utf-8"), sal, ITERACOES)
     return "pbkdf2_sha256${}${}${}".format(
@@ -44,6 +45,7 @@ def conferir_senha(senha, valor_armazenado):
         algoritmo, iteracoes, sal, esperado = str(valor_armazenado).split("$", 3)
         if algoritmo != "pbkdf2_sha256":
             return False
+        # Usa o sal e o número de iterações do registro para recalcular o hash.
         derivada = hashlib.pbkdf2_hmac(
             "sha256",
             str(senha).encode("utf-8"),

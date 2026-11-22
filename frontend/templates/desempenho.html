@@ -13,6 +13,12 @@
     <option value="">Todas as turmas</option>
     {% for chave, nome in dashboard.opcoes_turmas %}<option value="{{ chave }}" {{ 'selected' if filtros.turma == chave else '' }}>{{ nome }}</option>{% endfor %}
   </select></div>
+  <div class="campo"><label for="filtro-sala">Sala e disciplina</label><select id="filtro-sala" name="sala_id">
+    <option value="">Todas as minhas salas</option>
+    {% for sala in dashboard.opcoes_salas %}
+      <option value="{{ sala.id }}" {% if filtros.sala_id == sala.id|string %}selected{% endif %}>{{ sala.disciplina ~ ' · ' if sala.disciplina else '' }}{{ sala.nome }}</option>
+    {% endfor %}
+  </select></div>
   <div class="campo"><label for="filtro-faixa">Faixa de desempenho</label><select id="filtro-faixa" name="faixa">
     <option value="">Todas as faixas</option>
     {% for faixa in dashboard.opcoes_faixas %}<option value="{{ faixa.name }}" {{ 'selected' if filtros.faixa == faixa.name else '' }}>{{ faixa.value }}</option>{% endfor %}

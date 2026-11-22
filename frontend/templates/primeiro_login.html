@@ -15,7 +15,7 @@
     {{ campo('nome', 'Nome completo', valor=request.form.get('nome', usuario_atual.nome if usuario_atual.nome != 'Aluno' else ''), autocomplete='name') }}
     <label class="campo"><span>Idade</span><input name="idade" type="number" min="10" max="15" value="{{ request.form.get('idade', '') }}" required></label>
     {{ campos_sala_academica() }}
-    <p class="dica">Você pode concluir o cadastro mesmo que o professor ainda não tenha criado a sala. Quando houver uma sala com o mesmo ano, turma e período, ela aparecerá automaticamente na sua área.</p>
+    <p class="dica">Você pode concluir o cadastro antes de a turma ter salas. As salas com o mesmo ano, turma e período aparecem automaticamente na sua área.</p>
   {% endif %}
   {% if usuario_atual.primeiro_acesso %}
     {{ campo('senha', 'Nova senha com pelo menos 12 caracteres', 'password', autocomplete='new-password') }}

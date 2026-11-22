@@ -80,6 +80,7 @@ class ServicoGemini:
             raise ErroGemini("A IA retornou uma resposta inválida.") from None
 
     def gerar_questao(self, tema, dificuldade):
+        # Rejeita padrões detectáveis de dados pessoais no tema antes do envio.
         tema = self.validar_tema(tema)
         dificuldade = str(dificuldade or "MÉDIO").upper()
         if dificuldade not in {"FÁCIL", "MÉDIO", "DIFÍCIL"}:
@@ -113,6 +114,7 @@ class ServicoGemini:
             ),
             esquema,
         )
+        # O esquema orienta a API. A aplicação ainda confere alternativas e gabarito.
         return self._validar_resposta(questao)
 
     def adaptar_questao(self, questao, dificuldade):

@@ -9,6 +9,7 @@ from backend.taskflow.servicos.base import ServicoBase
 
 class ServicoQuestoes(ServicoBase):
     def _questao_do_professor(self, questao_id, professor_id):
+        # Editar, ativar ou excluir exige que a questão pertença ao professor.
         questao = self.repositorio.buscar_questao(questao_id)
         if questao is None or questao.professor_id != professor_id:
             raise ErroDominio("Questão não encontrada.")
@@ -31,6 +32,7 @@ class ServicoQuestoes(ServicoBase):
 
     def gerar_questao(self, tema, dificuldade):
         professor = self._professor()
+        # A geração retorna um rascunho. O professor salva a questão em outra ação.
         questao = self.gemini.gerar_questao(tema, dificuldade)
         self.repositorio.registrar_evento(professor.perfil, "IA_QUESTAO", "GEMINI", professor.id)
         return questao
@@ -108,6 +110,7 @@ class ServicoQuestoes(ServicoBase):
             feedback_acerto,
             feedback_erro,
         )
+        # A autoria vem da sessão do professor após a validação dos campos.
         questao = self.repositorio.criar_questao(professor.id, dados)
         self.repositorio.registrar_evento(
             professor.perfil, "QUESTAO_CRIADA", "QUESTOES", professor.id, questao.id

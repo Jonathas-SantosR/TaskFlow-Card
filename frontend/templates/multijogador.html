@@ -6,14 +6,16 @@
   <p class="rotulo">MODO ON-LINE</p>
   <h1>Multijogador</h1>
 </section>
-{% if sala and sala.status == 'ABERTA' %}
-<form method="post" class="painel formulario medio">
-  {{ csrf_input(csrf) }}
-  <h2>{{ sala.nome }}</h2>
-  <p>{{ sala.ano_escolar }} · Turma {{ sala.turma }} · Período {{ sala.sala_escolar|capitalize }}</p>
-  <button class="botao amarelo largura-total" type="submit">Entrar na minha sala</button>
-</form>
-{% else %}
-<p class="painel">{{ 'A partida da sua sala está encerrada.' if sala else 'Sua sala ainda não está disponível. Fale com o professor.' }}</p>
-{% endif %}
+<div class="lista-placar">
+  {% for sala in salas if sala.status == 'ABERTA' %}
+  <form method="post" class="painel formulario medio">
+    {{ csrf_input(csrf) }}
+    <h2>{{ sala.disciplina ~ ' · ' if sala.disciplina else '' }}{{ sala.nome }}</h2>
+    <p>{{ sala.ano_escolar }} · Turma {{ sala.turma }} · Período {{ sala.sala_escolar|capitalize }}</p>
+    <button class="botao amarelo largura-total" type="submit" name="sala" value="{{ sala.codigo }}">Entrar nesta sala</button>
+  </form>
+  {% else %}
+  <p class="painel">Nenhuma partida aberta nas salas da sua turma.</p>
+  {% endfor %}
+</div>
 {% endblock %}

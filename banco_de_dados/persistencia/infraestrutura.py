@@ -156,7 +156,7 @@ class InfraestruturaBanco:
         if self.tipo_banco != "postgres":
             self._migrar_dados_pessoais()
             MigradorIdentidade(self).aplicar()
-            MigradorBanco(self).aplicar_academico()
+        MigradorBanco(self).aplicar_academico()
 
     def _registrar_versoes_postgres(self):
         """Marca o esquema completo criado para a primeira instalação web."""

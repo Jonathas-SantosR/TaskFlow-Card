@@ -169,3 +169,32 @@ if (salaSincronizada) {
     window.setTimeout(() => window.location.reload(), 3000);
   }
 }
+
+
+document.querySelectorAll("[data-narracao-local]").forEach((botao) => {
+  const sintese = window.speechSynthesis;
+  if (!sintese || !window.SpeechSynthesisUtterance) return;
+  const status = botao.closest("form").querySelector("[data-narracao-status]");
+  botao.hidden = false;
+  botao.addEventListener("click", () => {
+    const vozes = sintese.getVoices().filter(
+      (voz) => voz.localService && /^pt(?:-|$)/i.test(voz.lang),
+    );
+    const voz = vozes.find((item) => /^pt-br$/i.test(item.lang)) || vozes[0];
+    if (!voz) {
+      status.textContent = "A leitura precisa de uma voz em português instalada no dispositivo.";
+      return;
+    }
+    const fala = new SpeechSynthesisUtterance(botao.dataset.narracaoLocal);
+    fala.voice = voz;
+    fala.lang = voz.lang;
+    sintese.cancel();
+    status.textContent = "";
+    fala.onerror = (evento) => {
+      if (!["canceled", "interrupted"].includes(evento.error)) {
+        status.textContent = "Não foi possível ler esta questão no dispositivo.";
+      }
+    };
+    sintese.speak(fala);
+  });
+});

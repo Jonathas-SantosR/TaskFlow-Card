@@ -42,8 +42,17 @@ class ServicoSalas(ServicoBase):
             raise ErroDominio("O nome da sala deve ter no máximo 80 caracteres.")
         return nome
 
+    @staticmethod
+    def _normalizar_disciplina(valor):
+        if valor is None:
+            return None
+        texto = " ".join(str(valor).split())
+        if not 2 <= len(texto) <= 60 or not any(letra.isalnum() for letra in texto):
+            raise ErroDominio("Informe uma disciplina com 2 a 60 caracteres.")
+        return texto
+
     def criar_sala_multijogador(
-        self, nome, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+        self, nome, questoes_ids, ano_escolar="", turma="", sala_escolar="", disciplina=None
     ):
         professor = self._professor()
         nome = self._normalizar_nome_sala(nome)
@@ -59,6 +68,7 @@ class ServicoSalas(ServicoBase):
             dados["ano_escolar"],
             dados["turma"],
             dados["sala_escolar"],
+            self._normalizar_disciplina(disciplina),
         )
         self.repositorio.registrar_evento(
             professor.perfil,
@@ -113,7 +123,7 @@ class ServicoSalas(ServicoBase):
         }
 
     def atualizar_sala_multijogador(
-        self, codigo, nome, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+        self, codigo, nome, questoes_ids, ano_escolar="", turma="", sala_escolar="", disciplina=None
     ):
         professor, sala = self._sala_do_professor(codigo)
         nome = self._normalizar_nome_sala(nome)
@@ -126,6 +136,7 @@ class ServicoSalas(ServicoBase):
             dados["ano_escolar"],
             dados["turma"],
             dados["sala_escolar"],
+            self._normalizar_disciplina(disciplina),
         )
         self.repositorio.registrar_evento(
             professor.perfil,

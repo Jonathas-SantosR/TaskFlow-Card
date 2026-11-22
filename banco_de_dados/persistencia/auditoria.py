@@ -4,6 +4,19 @@ from banco_de_dados.persistencia.base import RepositorioBase
 
 
 class RepositorioAuditoria(RepositorioBase):
+    RETENCAO_DIAS = 14  # A limpeza ocorre ao iniciar, registrar ou consultar a auditoria.
+
+    def _remover_eventos_expirados(self):
+        corte = datetime.now(timezone.utc) - timedelta(days=self.RETENCAO_DIAS)
+        self.conexao.execute(
+            "DELETE FROM auditoria WHERE ocorrido_em < ?",
+            (corte.isoformat(timespec="seconds"),),
+        )
+
+    def limpar_eventos_expirados(self):
+        with self._bloqueio, self.conexao:
+            self._remover_eventos_expirados()
+
     @staticmethod
     def _campos_assinatura_evento(ocorrido_em, perfil, evento, recurso, ator_id=None, alvo_id=None):
         return {
@@ -82,14 +95,13 @@ class RepositorioAuditoria(RepositorioBase):
         }
         if evento not in permitidos:
             raise ValueError("Evento de auditoria inválido.")
-        corte = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
         ocorrido_em = self._agora()
         campos = self._campos_assinatura_evento(
             ocorrido_em, perfil, evento, recurso, ator_id, alvo_id
         )
         assinatura = self.assinador_auditoria.assinar(campos)
         with self._bloqueio, self.conexao:
-            self.conexao.execute("DELETE FROM auditoria WHERE ocorrido_em < ?", (corte,))
+            self._remover_eventos_expirados()
             self.conexao.execute(
                 """INSERT INTO auditoria
                 (ocorrido_em,ator_id,perfil,evento,recurso,alvo_id,assinatura)
@@ -106,7 +118,8 @@ class RepositorioAuditoria(RepositorioBase):
             parametros.append(int(ator_id))
         consulta += " ORDER BY id DESC LIMIT ?"
         parametros.append(min(max(int(limite), 1), 100))
-        with self._bloqueio:
+        with self._bloqueio, self.conexao:
+            self._remover_eventos_expirados()
             linhas = self.conexao.execute(consulta, parametros).fetchall()
         eventos = []
         for linha in linhas:

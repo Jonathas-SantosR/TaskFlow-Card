@@ -1,7 +1,7 @@
 (() => {
   const script = document.querySelector('script[src*="sala_aluno.js"]');
   if (!script) return;
-  const codigoAtual = script.dataset.codigo || '';
+  const salasAtuais = JSON.stringify(JSON.parse(script.dataset.salas || '[]'));
 
   async function verificarSala() {
     try {
@@ -10,7 +10,7 @@
       });
       if (resposta.redirected || !resposta.ok) return;
       const dados = await resposta.json();
-      if ((dados.codigo || '') !== codigoAtual) window.location.reload();
+      if (JSON.stringify(dados.salas || []) !== salasAtuais) window.location.reload();
     } catch (_) {
       // A próxima consulta tentará novamente sem interromper a página.
     }

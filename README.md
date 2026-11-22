@@ -2,7 +2,7 @@
 
 **Jogo educacional web para acompanhamento da aprendizagem.** Professores organizam questões e salas; alunos treinam contra o bot ou participam de partidas on-line. As respostas ficam registradas e alimentam uma dashboard pedagógica.
 
-> Esta documentação descreve o funcionamento técnico da versão de servidor. Os perfis ativos na interface são **professor** e **aluno**. Gmail e Gemini são integrações opcionais que dependem de configuração no ambiente.
+> Esta documentação descreve o funcionamento técnico da versão de servidor. Os perfis ativos na interface são **professor** e **aluno**. O envio pelo Gmail depende da configuração do ambiente. O Gemini está desativado nesta versão.
 
 ## Sumário
 
@@ -25,7 +25,7 @@ Navegador
 backend/taskflow/web.py          Rotas, sessão e respostas HTTP
     ▼
 backend/taskflow/servicos/       Casos de uso e regras de negócio
-    ├──► Gemini e Gmail, quando configurados
+    ├──► Gmail, quando configurado
     ▼
 banco_de_dados/persistencia/     Leitura, gravação e migrações
     ▼
@@ -70,7 +70,7 @@ Arquivos centrais: `servicos/contas.py`, `servicos/recuperacao.py`, `web.py`, `s
 
 ### Questões e salas
 
-O professor cria, edita, pausa e organiza questões por tema e dificuldade. Uma sala reúne uma sequência de questões e recebe classificação escolar. O aluno encontra a sala correspondente ao seu ano, turma e período. Se ela for criada depois do cadastro, a página do aluno verifica a disponibilidade **a cada minuto** e atualiza a interface.
+O professor cria, edita, pausa e organiza questões por tema e dificuldade. Cada sala reúne uma sequência de questões e tem disciplina, ano escolar, turma e período. O aluno encontra todas as salas compatíveis com seu perfil escolar e escolhe qual usar. A página verifica mudanças na lista **a cada minuto**.
 
 O aluno **não digita código de sala**. Um identificador de seis caracteres continua sendo usado internamente nas rotas e no banco. A autorização confere se a sala pertence à classificação do aluno. Se uma sala ou questão ficar sem professor responsável, outro professor pode consultá-la e assumir sua responsabilidade.
 
@@ -78,17 +78,17 @@ Arquivos centrais: `servicos/salas.py`, `servicos/questoes.py`, `persistencia/sa
 
 ### Treino contra bot e multijogador
 
-No treino individual, o aluno recebe questões autorizadas para sua sala. A dificuldade começa em **médio** e é ajustada conforme os acertos recentes: abaixo de 50% vai para fácil; a partir de 80% vai para difícil. Cada tentativa registra alternativa, acerto, pontos e horário. O aluno pode reiniciar o histórico desse treino.
+No treino individual, o aluno recebe questões autorizadas para a sala escolhida. A dificuldade começa em **médio** e é ajustada conforme os acertos recentes naquela sala: abaixo de 50% vai para fácil; a partir de 80% vai para difícil. As novas tentativas registram sala, alternativa, acerto, pontos e horário. O aluno pode reiniciar todo o seu histórico contra o bot.
 
-No multijogador, a entrada ocorre pela sala vinculada ao aluno. Rodadas, participantes e respostas são persistidos. O placar usa os pontos dos participantes, e a página consulta o estado da partida para manter a apresentação sincronizada.
+No multijogador, o aluno escolhe entre as salas vinculadas à sua turma que tiverem uma partida aberta. Rodadas, participantes e respostas são persistidos. O placar usa os pontos dos participantes, e a página consulta o estado da partida para manter a apresentação sincronizada.
 
 Arquivos centrais: `servicos/jogos.py`, `servicos/salas.py`, `persistencia/desempenho.py`, `frontend/templates/jogar.html` e `sala_multijogador.html`.
 
 ### Dashboard pedagógica e auditoria
 
-A dashboard reúne total de alunos, participação, aproveitamento, respostas, acertos, erros, faixas de desempenho e resultados por aluno. Os filtros incluem aluno, turma, faixa, modo de jogo, dificuldade, situação da conta, datas e **bimestre do calendário a partir de 2026**. Os seis bimestres são pares fixos de meses: janeiro-fevereiro até novembro-dezembro. O intervalo usa o fuso de São Paulo; indicadores, gráficos e tabela consultam o mesmo recorte.
+A dashboard reúne total de alunos, participação, aproveitamento, respostas, acertos, erros, faixas de desempenho e resultados por aluno. Os filtros incluem aluno, turma, sala, faixa, modo de jogo, dificuldade, situação da conta, datas e **bimestre do calendário a partir de 2026**. Os seis bimestres são pares fixos de meses: janeiro-fevereiro até novembro-dezembro. O intervalo usa o fuso de São Paulo; indicadores, gráficos e tabela consultam o mesmo recorte.
 
-A página consulta os dados automaticamente a cada **dez segundos**. O professor também pode consultar os eventos de auditoria disponíveis na sua área. Esses registros apoiam a análise técnica e não substituem a avaliação pedagógica.
+O dashboard do professor usa apenas tentativas atribuídas às salas sob sua responsabilidade. As tentativas antigas sem sala ficam no histórico geral do aluno. O dashboard e os logs atualizam a cada **dez segundos**. Os eventos são exibidos no horário de Brasília e os registros com mais de 14 dias são removidos ao iniciar o sistema, consultar ou registrar auditoria.
 
 Arquivos centrais: `servicos/desempenho.py`, `persistencia/desempenho.py`, `persistencia/auditoria.py`, `frontend/templates/desempenho.html` e `_dados_desempenho.html`.
 
@@ -102,14 +102,14 @@ No servidor, `DATABASE_URL` determina o PostgreSQL. O código ainda contém supo
 - **Senhas:** são armazenadas como hash PBKDF2-HMAC-SHA256 com sal aleatório e 600.000 iterações, nunca em texto puro. O comprimento aceito é de 12 a 128 caracteres.
 - **Formulários e sessão:** há token CSRF, cookies `HttpOnly` e `SameSite=Lax`. Com URL HTTPS, o cookie de sessão recebe `Secure`. Páginas dinâmicas usam `Cache-Control: no-store`.
 - **Dados e auditoria:** `TASKFLOW_DATA_KEY` protege campos sensíveis com Fernet; `TASKFLOW_AUDIT_SEED` assina eventos com Ed25519. Essas chaves devem permanecer estáveis para os dados gravados continuarem legíveis e verificáveis.
-- **Entrada e integrações:** formulários têm validação no servidor, limite de tamanho de requisição e mensagens de erro sem revelar chaves. O texto enviado ao Gemini passa por verificação preventiva de padrões pessoais.
+- **Entrada e integrações:** formulários têm validação no servidor, limite de tamanho de requisição e mensagens de erro sem revelar chaves.
 - **Privacidade:** o aceite dos documentos legais é registrado, e a área da conta permite operações de privacidade do titular.
 
 ## Integrações
 
-### Gemini
+### Narração
 
-`ServicoGemini` oferece geração opcional de rascunhos pedagógicos e narração. A geração de áudio usa a API REST de Interactions. O parser lê o áudio em `steps[].content[].data`, valida o Base64 e confere os limites do WAV antes de devolvê-lo ao navegador. Uma questão gerada pela IA precisa ser revista pelo professor antes do uso pedagógico.
+A leitura das perguntas no treino usa uma voz local em português, quando disponível no dispositivo. Esta versão não chama o Gemini.
 
 ### Gmail
 
@@ -123,7 +123,6 @@ No servidor, `DATABASE_URL` determina o PostgreSQL. O código ainda contém supo
 | `FLASK_SECRET_KEY` | Assinatura da sessão Flask. |
 | `TASKFLOW_DATA_KEY` | Chave Fernet dos dados protegidos. |
 | `TASKFLOW_AUDIT_SEED` | Semente privada de 32 bytes para auditoria. |
-| `GEMINI_API_KEY` | Acesso opcional ao Gemini. |
 | `TASKFLOW_GMAIL_CLIENT_ID` | Identificador do cliente OAuth. |
 | `TASKFLOW_GMAIL_CLIENT_SECRET` | Segredo do cliente OAuth. |
 | `TASKFLOW_GMAIL_REFRESH_TOKEN` | Renovação da autorização do Gmail. |
@@ -133,6 +132,6 @@ O `render.yaml` descreve um serviço Python e um PostgreSQL. O processo instala 
 
 ## Verificações e limites
 
-As últimas verificações locais cobriram compilação dos módulos Python, análise sintática de 32 templates Jinja, leitura de uma resposta de áudio REST simulada e os limites do filtro bimestral com consulta de acertos e erros. Essas verificações **não equivalem a uma execução completa no servidor**. Cadastro, Gmail, Gemini real, partidas e dashboard precisam ser conferidos novamente na instalação publicada.
+As últimas verificações locais cobriram compilação dos módulos Python, análise sintática de 32 templates Jinja, leitura de uma resposta de áudio REST simulada e os limites do filtro bimestral com consulta de acertos e erros. Essas verificações **não equivalem a uma execução completa no servidor**. Cadastro, Gmail, narração local, partidas e dashboard precisam ser conferidos novamente na instalação publicada.
 
 O código contém componentes de compatibilidade com versões anteriores, inclusive partes do esquema e métodos legados. A documentação acima descreve os fluxos ativos da versão web.

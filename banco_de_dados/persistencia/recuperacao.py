@@ -305,7 +305,7 @@ class RepositorioRecuperacao(RepositorioBase):
                     WHERE token_hash=? AND usado_em IS NULL AND expira_em>?""",
                     (agora, token_hash, agora),
                 )
-                if cursor.rowcount != 1:
+                if cursor.rowcount != 1:  # O link só pode ser consumido uma vez.
                     raise ErroDominio(LINK_INVALIDO)
                 self.conexao.execute(
                     """UPDATE usuarios SET senha_hash=?,
