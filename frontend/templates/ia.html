@@ -3,7 +3,13 @@
 {% block titulo %}Questão com IA · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina"><p class="rotulo">GOOGLE AI STUDIO</p><h1>Questão com Gemini</h1><p>O professor deve revisar todo conteúdo gerado.</p></section>
-{% if not ia_configurada %}<p class="aviso aviso" role="status">IA indisponível. A chave do Gemini ainda não foi configurada. Você pode <a href="{{ url_for('questoes') }}">cadastrar questões manualmente</a>.</p>{% endif %}
+{% if not ia_configurada %}
+  <p class="aviso aviso" role="status">Indisponível no momento. O Gemini está desativado nesta instalação. Você pode <a href="{{ url_for('questoes') }}">cadastrar questões manualmente</a>.</p>
+{% elif not ia_disponivel %}
+  <p class="aviso aviso" role="status">Indisponível no momento. A última solicitação ao Gemini falhou. Você pode tentar novamente ou <a href="{{ url_for('questoes') }}">cadastrar a questão manualmente</a>.</p>
+{% else %}
+  <p class="verde" role="status">Disponível</p>
+{% endif %}
 <section class="painel" aria-labelledby="titulo-uso-gemini">
   <h2 id="titulo-uso-gemini">Uso do Gemini neste projeto</h2>
   <p>Operações concluídas nas últimas 24 horas:</p>
@@ -12,7 +18,7 @@
     <li>Questões adaptadas: <strong>{{ uso_gemini.adaptacoes }}</strong></li>
     <li>Narrações geradas: <strong>{{ uso_gemini.narracoes }}</strong></li>
   </ul>
-  <p>Cota restante: <strong>indisponível</strong>. Os limites variam por projeto e modelo e incluem usos feitos fora do jogo.</p>
+  <p><strong>Cota restante indisponível.</strong> Os números acima mostram apenas operações concluídas neste jogo. A cota do Google é compartilhada por projeto e depende do modelo e do limite aplicado.</p>
 </section>
 <form class="painel formulario largo" method="post" data-processando="Gerando rascunho…">
   {{ csrf_input(csrf) }}

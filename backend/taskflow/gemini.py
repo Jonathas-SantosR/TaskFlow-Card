@@ -27,10 +27,15 @@ class ServicoGemini:
         self.modelo = modelo or os.getenv("GEMINI_MODEL", MODELO_PADRAO)
         self.modelo_narracao = os.getenv("GEMINI_TTS_MODEL", MODELO_NARRACAO_PADRAO)
         self.timeout = timeout
+        self._falha_na_ultima_chamada = False
 
     @property
     def configurado(self):
         return bool(self.chave)
+
+    @property
+    def disponivel(self):
+        return self.configurado and not self._falha_na_ultima_chamada
 
     @staticmethod
     def validar_tema(tema):
@@ -69,15 +74,19 @@ class ServicoGemini:
             with request.urlopen(requisicao, timeout=self.timeout) as resposta:
                 dados = json.loads(resposta.read(2_000_000))
             texto = dados["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(texto)
+            resultado = json.loads(texto)
         except error.HTTPError as exc:
+            self._falha_na_ultima_chamada = True
             raise ErroGemini(self._explicar_erro_http(exc)) from None
         except (error.URLError, TimeoutError, OSError):
+            self._falha_na_ultima_chamada = True
             raise ErroGemini(
                 "A IA está temporariamente fora do ar. Tente novamente mais tarde."
             ) from None
         except (KeyError, IndexError, TypeError, ValueError):
             raise ErroGemini("A IA retornou uma resposta inválida.") from None
+        self._falha_na_ultima_chamada = False
+        return resultado
 
     def gerar_questao(self, tema, dificuldade):
         # Rejeita padrões detectáveis de dados pessoais no tema antes do envio.

@@ -36,7 +36,11 @@
         {% for alternativa in questao.alternativas %}
           <label class="alternativa"><input type="radio" name="alternativa" value="{{ loop.index0 }}" required><span>{{ 'ABCD'[loop.index0] }}. {{ alternativa }}</span></label>
         {% endfor %}
-        <button class="botao sucesso" type="submit">Responder nesta rodada</button>
+        <div class="acoes">
+          <button class="botao sucesso" type="submit">Responder nesta rodada</button>
+          <button class="botao" type="button" data-narracao-local="{{ questao.enunciado }}. {{ questao.alternativas | join('. ') }}" hidden>Ouvir questão</button>
+        </div>
+        <p class="dica" data-narracao-status role="status"></p>
       </form>
     {% else %}
       <div class="resultado resultado-bot"><strong>Aguardando outro aluno</strong><p>A resposta será liberada quando outro aluno da mesma turma entrar na partida.</p></div>

@@ -166,7 +166,14 @@ if (salaSincronizada) {
       }
     }, 5000);
   } else if (salaSincronizada.dataset.autoAtualizar) {
-    window.setTimeout(() => window.location.reload(), 3000);
+    window.setTimeout(function atualizarSala() {
+      const sintese = window.speechSynthesis;
+      if (sintese?.speaking || sintese?.pending) {
+        window.setTimeout(atualizarSala, 1000);
+        return;
+      }
+      window.location.reload();
+    }, 3000);
   }
 }
 

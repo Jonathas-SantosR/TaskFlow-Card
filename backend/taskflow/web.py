@@ -1129,7 +1129,10 @@ class AplicacaoTaskFlowWeb:
         @self.app.before_request
         def preparar_requisicao():
             g.usuario = self.sessoes.usuario_atual()
-            if request.endpoint in {"ia", "salvar_questao_ia", "adaptar_questao", "narracao_questao"}:
+            usa_gemini = request.endpoint in {"salvar_questao_ia", "adaptar_questao", "narracao_questao"} or (
+                request.endpoint == "ia" and request.method == "POST"
+            )
+            if usa_gemini:
                 if not getattr(self.dependencias.gemini, "configurado", True):
                     abort(404)
             g.perfil_pendente = False
@@ -1193,10 +1196,13 @@ class AplicacaoTaskFlowWeb:
 
         @self.app.context_processor
         def contexto_global():
+            gemini = self.dependencias.gemini
+            ia_configurada = getattr(gemini, "configurado", True)
             return {
                 "csrf": ProtecaoCsrf.token(),
                 "usuario_atual": g.usuario,
-                "ia_configurada": getattr(self.dependencias.gemini, "configurado", True),
+                "ia_configurada": ia_configurada,
+                "ia_disponivel": getattr(gemini, "disponivel", ia_configurada),
             }
 
         @self.app.after_request
