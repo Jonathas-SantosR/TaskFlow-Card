@@ -5,15 +5,15 @@
 {% if usuario_atual.precisa_vincular_gmail %}<p class="aviso aviso">Gmail da conta pendente. Use VINCULAR_GMAIL.bat no computador do projeto com o ID {{ usuario_atual.id }} e sua senha atual.</p>{% endif %}
 <section class="grade-menu">
   <a class="cartao-menu categoria-jogo" href="{{ url_for('salas_professor') }}"><strong>Salas on-line</strong><span>Criar, editar e acompanhar partidas</span></a>
-  <a class="cartao-menu categoria-conteudo" href="{{ url_for('questoes') }}"><strong>Banco de questões</strong><span>Cadastrar e liberar conteúdo</span></a>
-  <a class="cartao-menu categoria-administracao" href="{{ url_for('acervo_sem_professor') }}"><strong>Acervo sem professor</strong><span>Visualizar e assumir salas ou questões</span></a>
   <a class="cartao-menu categoria-jogo" href="{{ url_for('desempenho') }}"><strong>Dashboard</strong><span>Desempenho dos alunos e sinais de atenção</span></a>
-  <a class="cartao-menu {{ 'categoria-conteudo' if ia_disponivel else 'categoria-jogo' }}" href="{{ url_for('ia') }}">
+  <a class="cartao-menu categoria-conteudo" href="{{ url_for('questoes') }}"><strong>Banco de questões</strong><span>Cadastrar e liberar conteúdo</span></a>
+  <a class="cartao-menu categoria-conteudo" href="{{ url_for('ia') }}">
     <strong>Questão com IA</strong>
     <span>{{ 'Disponível' if ia_disponivel else 'Indisponível no momento' }}</span>
   </a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('acervo_sem_professor') }}"><strong>Acervo sem professor</strong><span>Visualizar e assumir salas ou questões</span></a>
   <a class="cartao-menu categoria-administracao" href="{{ url_for('alunos') }}"><strong>Alunos</strong><span>Consultar alunos e suas salas</span></a>
-  <a class="cartao-menu categoria-jogo" href="{{ url_for('auditoria') }}"><strong>Logs</strong><span>Consultar eventos técnicos recentes</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('auditoria') }}"><strong>Logs</strong><span>Consultar eventos técnicos recentes</span></a>
   <a class="cartao-menu categoria-administracao" href="{{ url_for('conta') }}"><strong>Minha conta</strong><span>Anonimização ou saída definitiva</span></a>
 </section>
 {% endblock %}
