@@ -1,0 +1,17 @@
+{% macro campos_sala_academica(sala=none) %}
+{% set ano_atual = request.form.get('ano_escolar', sala.ano_escolar if sala else '')|upper %}
+{% set periodo_atual = request.form.get('sala_escolar', sala.sala_escolar if sala else '')|upper %}
+<label class="campo"><span>Ano escolar</span><select name="ano_escolar" required>
+  <option value="">Selecione o ano</option>
+  {% for ano in ['6º ANO', '7º ANO', '8º ANO', '9º ANO'] %}<option value="{{ ano }}" {{ 'selected' if ano_atual == ano else '' }}>{{ ano|capitalize }}</option>{% endfor %}
+</select></label>
+<label class="campo"><span>Turma</span><input name="turma" value="{{ request.form.get('turma', sala.turma if sala else '') }}" maxlength="40" required placeholder="Ex.: A ou B"></label>
+<label class="campo"><span>Período</span><select name="sala_escolar" required>
+  <option value="">Selecione o período</option>
+  {% for periodo in ['MANHÃ', 'TARDE', 'INTEGRAL'] %}<option value="{{ periodo }}" {{ 'selected' if periodo_atual == periodo else '' }}>{{ periodo|capitalize }}</option>{% endfor %}
+</select></label>
+{% if sala and sala.chave_academica and (ano_atual not in ['6º ANO','7º ANO','8º ANO','9º ANO'] or periodo_atual not in ['MANHÃ','TARDE','INTEGRAL']) %}
+<p class="dica">Esta sala usa uma classificação antiga. Escolha um ano do 6º ao 9º e um período antes de salvar.</p>
+{% endif %}
+<p class="dica">Ano, turma e período identificam a turma escolar e definem as questões disponíveis para seus alunos.</p>
+{% endmacro %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Nova senha · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">RECUPERAÇÃO</p><h1>Crie uma nova senha</h1><p>Após a alteração, entre novamente em seus dispositivos.</p></section>
+<form class="painel formulario medio" method="post" data-redefinir-senha data-processando="Salvando…">
+  {{ csrf_input(csrf) }}
+  <input type="hidden" name="token" value="{{ token }}">
+  {{ campo('senha', 'Nova senha (12 a 128 caracteres)', 'password', autocomplete='new-password') }}
+  {{ campo('confirmacao', 'Confirme a nova senha', 'password', autocomplete='new-password') }}
+  <button type="submit" class="botao sucesso">Redefinir senha</button>
+  <a class="link" href="{{ url_for('recuperar_email') }}">Solicitar outro link</a>
+  <noscript>Ative o JavaScript para ler o link de recuperação recebido por e-mail.</noscript>
+</form>
+{% endblock %}

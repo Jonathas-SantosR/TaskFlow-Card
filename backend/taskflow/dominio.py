@@ -9,7 +9,6 @@ PERFIS = (PERFIL_PROFESSOR, PERFIL_ALUNO)
 NIVEIS_DIFICULDADE = ("FÁCIL", "MÉDIO", "DIFÍCIL")
 MODOS_JOGO = ("BOT", "MULTIJOGADOR")
 EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-IDENTIFICADOR_ALUNO = re.compile(r"^[A-Za-z0-9._-]{2,24}$")
 
 
 class ErroDominio(ValueError):
@@ -30,6 +29,9 @@ class Usuario:
     criado_em: str
     primeiro_acesso: bool = False
     anonimizado_em: str | None = None
+    versao_sessao: int = 0
+    gmail_vinculado: bool = False
+    idade: int | None = None
 
     def para_dict(self):
         return asdict(self)
@@ -41,6 +43,14 @@ class Usuario:
     @property
     def eh_aluno(self):
         return self.perfil == PERFIL_ALUNO
+
+    @property
+    def pode_administrar(self):
+        return self.eh_professor
+
+    @property
+    def precisa_vincular_gmail(self):
+        return self.perfil in PERFIS and not self.gmail_vinculado
 
     @property
     def anonimizado(self):
@@ -95,6 +105,10 @@ class SalaMultijogador:
     rodada: int
     status: str
     criada_em: str
+    ano_escolar: str = ""
+    turma: str = ""
+    sala_escolar: str = ""
+    chave_academica: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,22 +139,28 @@ def normalizar_nome(valor):
     return nome
 
 
-def normalizar_identificador(perfil, valor):
+def normalizar_gmail(valor):
+    """Uma caixa Gmail tem a mesma identidade com pontos, aliases e googlemail."""
     if not isinstance(valor, str):
-        raise ErroDominio("Informe o e-mail ou a matrícula.")
-    identificador = valor.strip()
-    if perfil == PERFIL_PROFESSOR:
-        if len(identificador) > 100 or EMAIL.fullmatch(identificador) is None:
-            raise ErroDominio("Informe um e-mail válido para o professor.")
-    elif perfil == PERFIL_ALUNO:
-        identificador = "".join(identificador.split())
-        if IDENTIFICADOR_ALUNO.fullmatch(identificador) is None:
-            raise ErroDominio(
-                "A matrícula deve ter de 2 a 24 letras, números, pontos, traços ou sublinhados."
-            )
-    else:
+        raise ErroDominio("Informe seu endereço Gmail.")
+    email = valor.strip().lower()
+    if len(email) > 254 or email.count("@") != 1:
+        raise ErroDominio("Use um endereço Gmail válido, terminado em @gmail.com.")
+    local, dominio = email.split("@")
+    if dominio not in {"gmail.com", "googlemail.com"} or not re.fullmatch(
+        r"[a-z0-9.]+(?:\+[a-z0-9._-]+)?", local
+    ):
+        raise ErroDominio("Use um endereço Gmail válido, terminado em @gmail.com.")
+    principal = local.split("+", 1)[0].replace(".", "")
+    if not principal or len(local) > 64:
+        raise ErroDominio("Use um endereço Gmail válido, terminado em @gmail.com.")
+    return f"{principal}@gmail.com"
+
+
+def normalizar_identificador(perfil, valor):
+    if perfil not in PERFIS:
         raise ErroDominio("Perfil inválido.")
-    return identificador
+    return normalizar_gmail(valor)
 
 
 def normalizar_questao(

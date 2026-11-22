@@ -9,6 +9,10 @@ class ErroConfiguracaoBanco(RuntimeError):
     """Indica configuração ausente ou conexão indisponível."""
 
 
+class ErroAutenticacaoMySQL(ErroConfiguracaoBanco):
+    """Indica que o servidor MySQL recusou a autenticação."""
+
+
 class ErroIntegridadeBanco(Exception):
     """Uniformiza violações de chave única entre SQLite e MySQL."""
 
@@ -43,14 +47,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
     ativo TINYINT(1) NOT NULL DEFAULT 1,
     criado_em VARCHAR(40) NOT NULL,
     primeiro_acesso TINYINT(1) NOT NULL DEFAULT 0,
+    idade INT NULL,
     recuperacao_hash VARCHAR(512) NULL,
     anonimizado_em VARCHAR(40) NULL,
-    professor_unico TINYINT GENERATED ALWAYS AS (
-        CASE WHEN perfil='PROFESSOR' AND anonimizado_em IS NULL THEN 1 ELSE NULL END
-    ) STORED,
     CONSTRAINT uq_usuario_identificador UNIQUE (perfil, chave_identificador),
-    CONSTRAINT uq_professor_ativo UNIQUE (professor_unico),
-    CONSTRAINT ck_usuario_perfil CHECK (perfil IN ('PROFESSOR','ALUNO'))
+    CONSTRAINT ck_usuario_perfil CHECK (perfil IN ('PROFESSOR','ALUNO','TI'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS auditoria (
@@ -298,6 +299,10 @@ def conectar_mysql(configuracao, criar_banco=True):
                 inicial.close()
             conexao = pymysql.connect(database=banco, **parametros)
     except pymysql.MySQLError as erro:
+        if isinstance(erro, pymysql.err.OperationalError) and erro.args[:1] == (1045,):
+            raise ErroAutenticacaoMySQL(
+                "O MySQL recusou o login (erro 1045). Confira o usuário e a senha do MySQL."
+            ) from erro
         raise ErroConfiguracaoBanco(
             "Não foi possível conectar ao MySQL. Confira servidor, banco e credenciais."
         ) from erro

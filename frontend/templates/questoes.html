@@ -3,26 +3,45 @@
 {% from '_campos_questao.html' import campos_questao %}
 {% block titulo %}Banco de questões · TaskFlowCards{% endblock %}
 {% block conteudo %}
-<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Banco de questões</h1><p>Cadastre, revise, adapte e libere conteúdo para as partidas.</p></section>
+{% if not ia_configurada %}<p class="aviso aviso" role="status">A IA está indisponível porque a chave do Gemini ainda não foi configurada. O cadastro manual de questões está disponível.</p>{% endif %}
+<section class="cabecalho-pagina"><p class="rotulo">CONTEÚDO PEDAGÓGICO</p><h1>Banco de questões</h1><p>Cadastre, revise, adapte e libere conteúdo para as partidas.</p></section>
+<form class="painel formulario filtros-painel" method="get" action="{{ url_for('questoes') }}" aria-label="Filtros das questões">
+  <h2>Localizar questões</h2>
+  <div class="campo"><label for="questoes-tema">Tema</label><input id="questoes-tema" name="tema" value="{{ filtros.tema }}" placeholder="Buscar por tema" list="temas-questoes"><datalist id="temas-questoes">{% for tema in temas %}<option value="{{ tema }}">{% endfor %}</datalist></div>
+  <div class="campo"><label for="questoes-dificuldade">Dificuldade cadastrada</label><select id="questoes-dificuldade" name="dificuldade"><option value="">Todas as dificuldades</option>{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option value="{{ nivel }}" {{ 'selected' if filtros.dificuldade == nivel else '' }}>{{ nivel }}</option>{% endfor %}</select></div>
+  <div class="campo"><label for="questoes-situacao">Situação</label><select id="questoes-situacao" name="situacao"><option value="">Ativas e pausadas</option><option value="ATIVA" {{ 'selected' if filtros.situacao == 'ATIVA' else '' }}>Ativas</option><option value="PAUSADA" {{ 'selected' if filtros.situacao == 'PAUSADA' else '' }}>Pausadas</option></select></div>
+  <div class="acoes"><button class="botao" type="submit">Aplicar filtros</button><a class="link" href="{{ url_for('questoes') }}">Limpar filtros</a></div>
+</form>
+<p class="dica" role="status">{{ questoes|length }} de {{ total_questoes }} questão(ões). A dificuldade cadastrada aparece em destaque. A adaptação com IA cria uma cópia com a nova dificuldade, sem alterar a original.</p>
 <div class="duas-colunas questoes-layout">
   <section class="painel">
     <div class="titulo-painel"><h2>Questões</h2><span>{{ questoes|length }}</span></div>
     <div class="lista-questoes">
       {% for questao in questoes %}
         <article class="linha-questao">
-          <div><small>#{{ questao.id }} · {{ questao.tema }} · {{ questao.dificuldade }}</small><strong>{{ questao.enunciado }}</strong></div>
+          <div><small>#{{ questao.id }} · {{ questao.tema }}</small><span class="dificuldade-questao" data-dificuldade="{{ questao.dificuldade }}">Dificuldade cadastrada: <strong>{{ questao.dificuldade }}</strong></span><strong>{{ questao.enunciado }}</strong></div>
           <span class="status {{ '' if questao.ativa else 'bloqueado' }}">{{ 'ATIVA' if questao.ativa else 'PAUSADA' }}</span>
           <div class="acoes-linha">
             <a class="link" href="{{ url_for('editar_questao', questao_id=questao.id) }}">Editar</a>
             <form method="post" action="{{ url_for('alternar_questao', questao_id=questao.id) }}">{{ csrf_input(csrf) }}<button class="link" type="submit">{{ 'Pausar' if questao.ativa else 'Liberar' }}</button></form>
-            <form method="post" action="{{ url_for('adaptar_questao', questao_id=questao.id) }}" data-processando="Adaptando…">{{ csrf_input(csrf) }}<select name="dificuldade" aria-label="Nova dificuldade">{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option>{{ nivel }}</option>{% endfor %}</select><button class="link" type="submit">Adaptar com IA</button></form>
+            <details class="adaptar-questao">
+              <summary class="link">Adaptar com IA</summary>
+              <form method="post" action="{{ url_for('adaptar_questao', questao_id=questao.id) }}" data-processando="Adaptando…">
+                {{ csrf_input(csrf) }}
+                <label for="adaptar-{{ questao.id }}">Nova dificuldade</label>
+                <select id="adaptar-{{ questao.id }}" name="dificuldade" required>
+                  {% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] if nivel != questao.dificuldade %}<option value="{{ nivel }}">{{ nivel }}</option>{% endfor %}
+                </select>
+                <button class="link" type="submit">Gerar adaptação</button>
+              </form>
+            </details>
             <form class="formulario-narracao" method="post" action="{{ url_for('narracao_questao', questao_id=questao.id) }}">{{ csrf_input(csrf) }}<button class="link" type="submit">Narrar com Gemini</button></form>
             <form method="post" action="{{ url_for('excluir_questao', questao_id=questao.id) }}" data-confirmar="Excluir esta questão?">{{ csrf_input(csrf) }}<button class="link perigo" type="submit">Excluir</button></form>
           </div>
           <audio class="audio-questao" controls hidden></audio>
         </article>
       {% else %}
-        <p class="vazio">Nenhuma questão cadastrada.</p>
+        <p class="vazio">{{ 'Nenhuma questão corresponde aos filtros. Experimente limpar a seleção.' if total_questoes else 'Nenhuma questão cadastrada.' }}</p>
       {% endfor %}
     </div>
   </section>

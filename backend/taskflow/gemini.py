@@ -50,7 +50,7 @@ class ServicoGemini:
 
     def _gerar_json(self, instrucao, esquema):
         if not self.chave:
-            raise ErroGemini("Configure GEMINI_API_KEY antes de usar a IA.")
+            raise ErroGemini("A IA está indisponível: a chave do Gemini ainda não foi configurada.")
         corpo = {
             "contents": [{"parts": [{"text": instrucao}]}],
             "generationConfig": {
@@ -73,7 +73,9 @@ class ServicoGemini:
         except error.HTTPError as exc:
             raise ErroGemini(self._explicar_erro_http(exc)) from None
         except (error.URLError, TimeoutError, OSError):
-            raise ErroGemini("Não foi possível conectar ao Google AI Studio.") from None
+            raise ErroGemini(
+                "A IA está temporariamente fora do ar. Tente novamente mais tarde."
+            ) from None
         except (KeyError, IndexError, TypeError, ValueError):
             raise ErroGemini("A IA retornou uma resposta inválida.") from None
 
@@ -160,7 +162,9 @@ class ServicoGemini:
         """Gera áudio WAV pela API Interactions atual do Gemini TTS."""
 
         if not self.chave:
-            raise ErroGemini("Configure GEMINI_API_KEY antes de usar a narração.")
+            raise ErroGemini(
+                "A narração está indisponível: a chave do Gemini ainda não foi configurada."
+            )
         texto = self._validar_texto_sem_dados_pessoais(
             ". ".join(
                 [
@@ -191,7 +195,7 @@ class ServicoGemini:
                     ],
                 }
             ],
-            "response_format": {"type": "audio", "mime_type": "audio/wav"},
+            "response_format": {"type": "audio"},
             "generation_config": {"speech_config": [{"voice": "Kore"}]},
         }
         requisicao = request.Request(
@@ -222,16 +226,24 @@ class ServicoGemini:
         except error.HTTPError as exc:
             raise ErroGemini(self._explicar_erro_http(exc)) from None
         except (error.URLError, TimeoutError, OSError):
-            raise ErroGemini("Não foi possível conectar ao serviço de narração.") from None
+            raise ErroGemini("O serviço de narração está temporariamente fora do ar.") from None
         except (KeyError, TypeError, ValueError):
             raise ErroGemini("A IA não retornou um áudio válido.") from None
 
     @staticmethod
     def _extrair_saida_audio(dados):
-        """Aceita o formato atual do generateContent e o retorno antigo."""
+        """Extrai o áudio da resposta REST de Interactions e dos formatos legados."""
 
         if not isinstance(dados, dict):
             return None
+        # A API REST de Interactions devolve o áudio em steps[].content[].data.
+        # A propriedade output_audio existe no SDK, mas não é garantida no JSON REST.
+        for passo in reversed(dados.get("steps", [])):
+            if not isinstance(passo, dict) or passo.get("type") != "model_output":
+                continue
+            for conteudo in reversed(passo.get("content", [])):
+                if isinstance(conteudo, dict) and conteudo.get("type") == "audio" and conteudo.get("data"):
+                    return conteudo
         for candidato in dados.get("candidates", []):
             conteudo = candidato.get("content", {}) if isinstance(candidato, dict) else {}
             for parte in conteudo.get("parts", []):
@@ -278,7 +290,7 @@ class ServicoGemini:
         if codigo == 404:
             return "O modelo configurado não está disponível para esta chave (HTTP 404)."
         if codigo == 429:
-            return "O limite de uso da API foi atingido (HTTP 429)."
+            return "O limite de uso da IA foi atingido. Confira a cota no Google AI Studio ou tente mais tarde (HTTP 429)."
         if codigo in (408, 500, 502, 503, 504):
             return f"O Google AI Studio está temporariamente indisponível (HTTP {codigo})."
         return f"A API Gemini devolveu um erro HTTP {codigo or 'desconhecido'}."

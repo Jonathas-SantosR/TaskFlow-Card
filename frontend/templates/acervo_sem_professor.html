@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import csrf_input %}
+{% block titulo %}Acervo sem professor · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">PROFESSOR</p>
+  <h1>Acervo sem professor</h1>
+  <p>Consulte salas e questões cujo responsável saiu do sistema. Ao assumir um item, você se torna responsável por ele sem reiniciar partidas ou alterar respostas.</p>
+</section>
+<div class="acervo-grade">
+  <section class="painel" aria-label="Salas sem professor">
+    <h2>Salas sem professor ({{ salas|length }})</h2>
+    {% for item in salas %}
+      {% set sala = item.sala %}
+      <article class="acervo-item">
+        <h3>{{ sala.nome }}</h3>
+        <p>{{ sala.ano_escolar or 'Ano não informado' }} · Turma {{ sala.turma or 'não informada' }} · Período {{ (sala.sala_escolar|capitalize) if sala.sala_escolar else 'não informado' }}</p>
+        <p class="dica">{{ sala.status|title }} · {{ item.total_questoes }} questão(ões) · {{ item.total_matriculados }} aluno(s) vinculado(s)</p>
+        <details><summary>Visualizar perguntas da sala</summary>
+          <ol>{% for questao in item.questoes %}<li>#{{ questao.id }} · {{ questao.tema }} · {{ questao.enunciado }}</li>{% else %}<li>Nenhuma pergunta vinculada.</li>{% endfor %}</ol>
+        </details>
+        <form method="post" action="{{ url_for('aderir_sala', codigo=sala.codigo) }}" data-confirmar="Assumir a responsabilidade pela sala {{ sala.nome }}?">
+          {{ csrf_input(csrf) }}<button class="botao sucesso" type="submit">Assumir esta sala</button>
+        </form>
+      </article>
+    {% else %}<p class="dica">Não há salas sem professor.</p>{% endfor %}
+  </section>
+  <section class="painel" aria-label="Questões sem professor">
+    <h2>Questões sem professor ({{ questoes|length }})</h2>
+    {% for questao in questoes %}
+      <article class="acervo-item">
+        <h3>#{{ questao.id }} · {{ questao.tema }}</h3>
+        <p class="dica">{{ questao.dificuldade }} · {{ 'Ativa' if questao.ativa else 'Pausada' }}</p>
+        <p>{{ questao.enunciado }}</p>
+        <details><summary>Visualizar alternativas e resposta</summary>
+          <ol type="A">{% for alternativa in questao.alternativas %}<li>{{ alternativa }}{{ ' ✓' if loop.index0 == questao.indice_correto else '' }}</li>{% endfor %}</ol>
+        </details>
+        <form method="post" action="{{ url_for('aderir_questao', questao_id=questao.id) }}" data-confirmar="Assumir a responsabilidade pela questão #{{ questao.id }}?">
+          {{ csrf_input(csrf) }}<button class="botao sucesso" type="submit">Assumir esta questão</button>
+        </form>
+      </article>
+    {% else %}<p class="dica">Não há questões sem professor.</p>{% endfor %}
+  </section>
+</div>
+<div class="acoes"><a class="botao" href="{{ url_for('painel_professor') }}">Voltar ao painel</a></div>
+{% endblock %}

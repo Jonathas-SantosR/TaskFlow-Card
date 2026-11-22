@@ -1,0 +1,7 @@
+<section class="painel dashboard-tabela" tabindex="0" aria-label="Eventos de auditoria, tabela com rolagem">
+  <table><caption>Eventos recentes</caption><thead><tr><th>Data e hora (UTC)</th><th>Evento</th><th>Perfil</th><th>Recurso</th><th>ID do autor</th><th>ID do alvo</th><th>Integridade</th></tr></thead><tbody>
+    {% for evento in eventos %}
+      <tr><td>{{ evento.ocorrido_em }}</td><td>{{ evento.evento }}</td><td>{{ evento.perfil }}</td><td>{{ evento.recurso }}</td><td>{{ evento.ator_id or '—' }}</td><td>{{ evento.alvo_id or '—' }}</td><td>{{ 'Verificada' if evento.integridade else 'Não verificada' }}</td></tr>
+    {% else %}<tr><td colspan="7">Nenhum evento registrado.</td></tr>{% endfor %}
+  </tbody></table>
+</section>

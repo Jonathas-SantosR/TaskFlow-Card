@@ -1,16 +1,26 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from backend.taskflow.dominio import PERFIL_ALUNO, PERFIL_PROFESSOR, AcessoNegado, ErroDominio
-from backend.taskflow.seguranca import validar_codigo_recuperacao
+from backend.taskflow.dominio import (
+    PERFIL_ALUNO,
+    PERFIL_PROFESSOR,
+    AcessoNegado,
+    ErroDominio,
+    normalizar_identificador,
+    normalizar_nome,
+)
+from backend.taskflow.seguranca import validar_codigo_recuperacao, validar_senha
+from backend.taskflow.classificacao import validar_idade
 from backend.taskflow.servicos.base import ServicoBase
 
 
 class ServicoContas(ServicoBase):
     def buscar_aluno(self, aluno_id):
-        self._professor()
-        aluno = self.repositorio.buscar_usuario(aluno_id)
-        return aluno if aluno is not None and aluno.eh_aluno else None
+        professor = self._professor()
+        return next(
+            (aluno for aluno in self.repositorio.listar_alunos(professor.id)
+             if aluno.id == int(aluno_id)), None
+        )
 
     @property
     def primeiro_acesso(self):
@@ -21,23 +31,10 @@ class ServicoContas(ServicoBase):
         if aceitou is not True:
             raise ErroDominio("Leia e aceite os Termos de Uso e a Política de Privacidade.")
 
-    def _validar_codigo_configuracao_professor(self, codigo_recebido):
-        if not self._codigo_configuracao_professor:
-            raise AcessoNegado(
-                "Cadastro administrativo desativado. Configure TASKFLOW_SETUP_CODE "
-                "no servidor antes de criar o professor inicial."
-            )
-        if not secrets.compare_digest(
-            self._codigo_configuracao_professor,
-            str(codigo_recebido or "").strip(),
-        ):
-            raise AcessoNegado("Código de configuração do professor inválido.")
-
     def criar_primeiro_professor(
         self, nome, email, senha, confirmacao, aceitou, codigo_configuracao=""
     ):
         self._exigir_aceite(aceitou)
-        self._validar_codigo_configuracao_professor(codigo_configuracao)
         if senha != confirmacao:
             raise ErroDominio("As senhas não coincidem.")
         usuario = self.repositorio.criar_primeiro_professor(nome, email, senha)
@@ -60,28 +57,29 @@ class ServicoContas(ServicoBase):
     ):
         """Cria uma conta ativa após o titular aceitar os documentos legais."""
 
-        self._exigir_aceite(aceitou)
-        if perfil not in {PERFIL_PROFESSOR, PERFIL_ALUNO}:
-            raise ErroDominio("Perfil inválido.")
-        if senha != confirmacao:
-            raise ErroDominio("As senhas não coincidem.")
-        if perfil == PERFIL_PROFESSOR:
-            if self.repositorio.possui_professor():
-                raise AcessoNegado(
-                    "O professor responsável já foi cadastrado. Entre com a conta existente."
-                )
-            self._validar_codigo_configuracao_professor(codigo_configuracao)
-            usuario = self.repositorio.criar_primeiro_professor(nome, identificador, senha)
-        else:
-            usuario = self.repositorio.criar_usuario(
-                perfil, nome, identificador, senha, primeiro_acesso=False
-            )
+        self.validar_cadastro(perfil, nome, identificador, senha, confirmacao, aceitou, codigo_configuracao)
+        if perfil == PERFIL_ALUNO:
+            nome = "Aluno"
+        usuario = self.repositorio.criar_usuario(perfil, nome, identificador, senha)
         self.repositorio.registrar_aceite(usuario.id)
         self.repositorio.registrar_evento(
             usuario.perfil, "CONTA_CRIADA", "USUARIOS", usuario.id, usuario.id
         )
         self.usuario_atual = usuario
         return usuario
+
+    def validar_cadastro(
+        self, perfil, nome, identificador, senha, confirmacao, aceitou, codigo_configuracao=""
+    ):
+        self._exigir_aceite(aceitou)
+        if perfil not in {PERFIL_PROFESSOR, PERFIL_ALUNO}:
+            raise ErroDominio("Perfil inválido.")
+        if senha != confirmacao:
+            raise ErroDominio("As senhas não coincidem.")
+        validar_senha(senha)
+        normalizar_identificador(perfil, identificador)
+        if perfil == PERFIL_PROFESSOR:
+            normalizar_nome(nome)
 
     def _bloqueado(self, chave):
         quantidade, inicio = self._tentativas.get(chave, (0, datetime.now(timezone.utc)))
@@ -129,8 +127,45 @@ class ServicoContas(ServicoBase):
         )
         return usuario
 
+    def concluir_perfil_aluno(self, nome, idade, codigo_sala, senha, confirmacao, aceitou):
+        """Aceita chamadas legadas por código e usa a mesma validação por classificação."""
+        sala = self.repositorio.salas.buscar_sala_multijogador(codigo_sala)
+        if sala is None or not sala.chave_academica:
+            raise ErroDominio("Sala não encontrada para esse código.")
+        return self.concluir_perfil_aluno_classificacao(
+            nome, idade, sala.ano_escolar, sala.turma, sala.sala_escolar,
+            senha, confirmacao, aceitou,
+        )
+
+    def concluir_perfil_aluno_classificacao(
+        self, nome, idade, ano_escolar, turma, periodo, senha, confirmacao, aceitou
+    ):
+        aluno = self._aluno()
+        self._exigir_aceite(aceitou)
+        if self.repositorio.salas.buscar_perfil_aluno(aluno.id):
+            raise AcessoNegado("Seu perfil escolar já foi preenchido.")
+        if aluno.primeiro_acesso and senha != confirmacao:
+            raise ErroDominio("As senhas não coincidem.")
+        usuario = self.repositorio.concluir_perfil_aluno_classificacao(
+            aluno.id,
+            aluno.versao_sessao,
+            normalizar_nome(nome),
+            idade,
+            ano_escolar,
+            turma,
+            periodo,
+            senha if aluno.primeiro_acesso else None,
+        )
+        self.usuario_atual = usuario
+        self.repositorio.registrar_evento(
+            usuario.perfil, "PERFIL_ESCOLAR_CONCLUIDO", "ALUNOS", usuario.id, usuario.id
+        )
+        return usuario
+
     def configurar_recuperacao(self, codigo, confirmacao):
         professor = self._professor()
+        if not professor.eh_professor:
+            raise AcessoNegado("O código de emergência é exclusivo do professor responsável.")
         if codigo != confirmacao:
             raise ErroDominio("Os códigos de recuperação não coincidem.")
         validar_codigo_recuperacao(codigo)
@@ -145,6 +180,8 @@ class ServicoContas(ServicoBase):
 
     def recuperacao_configurada(self):
         professor = self._professor()
+        if not professor.eh_professor:
+            raise AcessoNegado("O código de emergência é exclusivo do professor responsável.")
         return self.repositorio.professor_possui_recuperacao(professor.id)
 
     def recuperar_senha_professor(self, email, codigo, senha, confirmacao):
@@ -158,59 +195,8 @@ class ServicoContas(ServicoBase):
         return professor
 
     def listar_alunos(self):
-        self._professor()
-        return self.repositorio.listar_alunos()
-
-    def criar_aluno(self, nome, matricula, senha, confirmacao):
         professor = self._professor()
-        if senha != confirmacao:
-            raise ErroDominio("As senhas não coincidem.")
-        aluno = self.repositorio.criar_aluno(nome, matricula, senha)
-        self.repositorio.registrar_evento(
-            professor.perfil, "ALUNO_CRIADO", "ALUNOS", professor.id, aluno.id
-        )
-        return aluno
-
-    def alternar_aluno(self, aluno_id):
-        professor = self._professor()
-        aluno = self.repositorio.buscar_usuario(aluno_id)
-        if aluno is None or not aluno.eh_aluno:
-            raise ErroDominio("Aluno não encontrado.")
-        atualizado = self.repositorio.definir_ativo(aluno.id, not aluno.ativo)
-        evento = "ALUNO_ATIVADO" if atualizado.ativo else "ALUNO_BLOQUEADO"
-        self.repositorio.registrar_evento(
-            professor.perfil, evento, "ALUNOS", professor.id, aluno.id
-        )
-        return atualizado
-
-    def excluir_aluno(self, aluno_id):
-        professor = self._professor()
-        self.repositorio.excluir_aluno(aluno_id)
-        self.repositorio.registrar_evento(
-            professor.perfil, "ALUNO_EXCLUIDO", "ALUNOS", professor.id, None
-        )
-
-    def redefinir_senha_aluno(self, aluno_id, senha, confirmacao):
-        professor = self._professor()
-        aluno = self.repositorio.buscar_usuario(aluno_id)
-        if aluno is None or not aluno.eh_aluno:
-            raise ErroDominio("Aluno não encontrado.")
-        if senha != confirmacao:
-            raise ErroDominio("As senhas não coincidem.")
-        atualizado = self.repositorio.definir_senha(aluno.id, senha, primeiro_acesso=True)
-        self._tentativas.pop(self._chave_tentativa(PERFIL_ALUNO, aluno.identificador), None)
-        self.repositorio.registrar_evento(
-            professor.perfil,
-            "SENHA_ALUNO_REDEFINIDA",
-            "ALUNOS",
-            professor.id,
-            aluno.id,
-        )
-        return atualizado
-
-    def listar_auditoria(self):
-        self._professor()
-        return self.repositorio.listar_eventos()
+        return self.repositorio.listar_alunos(professor.id)
 
     def encerrar_conta(self, modo, senha, confirmacao):
         """Executa a solicitação do titular após confirmar senha e intenção."""
@@ -220,6 +206,8 @@ class ServicoContas(ServicoBase):
             raise AcessoNegado("Entre novamente para alterar sua conta.")
         modo = str(modo).strip().upper()
         confirmacao = str(confirmacao).strip().upper()
+        if usuario.eh_aluno and modo != "EXCLUIR":
+            raise ErroDominio("Para encerrar a conta de aluno, escolha excluir definitivamente.")
         if modo not in {"ANONIMIZAR", "EXCLUIR"}:
             raise ErroDominio("Escolha anonimizar ou excluir definitivamente.")
         if confirmacao != modo:
@@ -237,5 +225,36 @@ class ServicoContas(ServicoBase):
         self.usuario_atual = None
         return modo
 
+    def alterar_senha(self, senha_atual, nova_senha, confirmacao):
+        usuario = self.usuario_atual
+        if usuario is None:
+            raise AcessoNegado("Entre novamente para alterar sua senha.")
+        if nova_senha != confirmacao:
+            raise ErroDominio("As senhas não coincidem.")
+        atualizado = self.repositorio.alterar_senha_titular(
+            usuario.id, senha_atual, nova_senha
+        )
+        self.usuario_atual = atualizado
+        self.repositorio.registrar_evento(
+            usuario.perfil, "SENHA_ALTERADA", "USUARIOS", usuario.id, usuario.id
+        )
+        return atualizado
+
+    def atualizar_idade_professor(self, idade):
+        professor = self._professor()
+        atualizado = self.repositorio.definir_idade_professor(
+            professor.id, validar_idade(idade)
+        )
+        self.usuario_atual = atualizado
+        self.repositorio.registrar_evento(
+            professor.perfil, "IDADE_PROFESSOR_ATUALIZADA", "USUARIOS", professor.id,
+            professor.id,
+        )
+        return atualizado
+
     def _chave_tentativa(self, perfil, identificador):
+        try:
+            identificador = normalizar_identificador(perfil, identificador)
+        except ErroDominio:
+            pass
         return f"{perfil}|{str(identificador).strip().casefold()}"

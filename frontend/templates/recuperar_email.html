@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% from '_formularios.html' import campo, csrf_input %}
+{% block titulo %}Recuperar senha · TaskFlowCards{% endblock %}
+{% block conteudo %}
+<section class="cabecalho-pagina"><p class="rotulo">ACESSO</p><h1>Esqueci a senha</h1><p>Receba um link para criar uma nova senha no mesmo Gmail usado para entrar.</p></section>
+<form class="painel formulario medio" method="post" data-processando="Solicitando…">
+  {{ csrf_input(csrf) }}
+  <input type="hidden" name="requisicao_id" value="{{ requisicao_id }}">
+  <input type="hidden" name="perfil" value="{{ perfil }}">
+  <p class="dica">Recuperação da conta de {{ 'professor' if perfil == 'PROFESSOR' else 'aluno' }}.</p>
+  {{ campo('identificador', 'Gmail de login', 'email', autocomplete='username') }}
+  <button class="botao sucesso" type="submit">Enviar link de recuperação</button>
+  <p class="dica">O link expira em 30 minutos e só pode ser usado uma vez. Confira também a pasta de spam.</p>
+  <p class="dica">Clique uma vez e aguarde. Há um intervalo mínimo de um minuto e um limite de três solicitações por hora. Se ainda não vinculou seu Gmail, procure o professor responsável.</p>
+  {% if perfil == 'PROFESSOR' %}<a class="link" href="{{ url_for('recuperar_professor') }}">Usar meu código de emergência</a>{% endif %}
+  <a class="link" href="{{ url_for('login', perfil=perfil|lower) }}">Voltar ao login</a>
+</form>
+{% endblock %}

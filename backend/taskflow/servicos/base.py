@@ -10,7 +10,6 @@ class ContextoServico:
     repositorio: object
     gemini: object
     tentativas: dict = field(default_factory=dict)
-    codigo_configuracao_professor: str = ""
     usuario_atual: Usuario | None = None
 
 
@@ -35,10 +34,6 @@ class ServicoBase:
     @property
     def _tentativas(self):
         return self._contexto.tentativas
-
-    @property
-    def _codigo_configuracao_professor(self):
-        return self._contexto.codigo_configuracao_professor
 
     @usuario_atual.setter
     def usuario_atual(self, usuario):

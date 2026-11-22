@@ -5,20 +5,12 @@
 <section class="cabecalho-pagina"><p class="rotulo">LOGIN</p><h1>{{ perfil|title }}</h1><p>Use sua credencial individual.</p></section>
 <form class="painel formulario medio" method="post">
   {{ csrf_input(csrf) }}
-  {{ campo('identificador', 'E-mail do professor' if perfil == 'PROFESSOR' else 'Matrícula / RA', autocomplete='username') }}
+  {{ campo('identificador', 'E-mail' if perfil == 'PROFESSOR' else 'Gmail', 'email', valor=request.form.get('identificador', ''), autocomplete='username') }}
   {{ campo('senha', 'Senha', 'password', autocomplete='current-password') }}
   <div class="acoes"><button class="botao sucesso" type="submit">Entrar</button></div>
   <div class="acoes secundarias">
-    {% if permite_cadastro %}
-      <a class="link" href="{{ url_for('criar_conta', perfil=perfil|lower) }}">Criar conta</a>
-    {% elif perfil == 'PROFESSOR' %}
-      <span class="dica">A conta responsável já foi criada.</span>
-    {% endif %}
-    {% if perfil == 'PROFESSOR' %}
-      <a class="link perigo" href="{{ url_for('recuperar_professor') }}">Esqueci a senha</a>
-    {% else %}
-      <a class="link perigo" href="{{ url_for('recuperar_aluno') }}">Esqueci a senha</a>
-    {% endif %}
+    <a class="link" href="{{ url_for('criar_conta', perfil=perfil|lower) }}">Criar conta</a>
+    <a class="link perigo" href="{{ url_for('recuperar_email', perfil=perfil) }}">Esqueci a senha</a>
   </div>
 </form>
 {% endblock %}

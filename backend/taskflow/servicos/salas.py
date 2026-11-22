@@ -1,5 +1,6 @@
 import secrets
 
+from backend.taskflow.classificacao import normalizar_classificacao
 from backend.taskflow.dominio import AcessoNegado, ErroDominio, ParticipanteSala, ResultadoResposta
 from backend.taskflow.servicos.base import ServicoBase
 
@@ -15,6 +16,7 @@ class ServicoSalas(ServicoBase):
         return codigo
 
     def _normalizar_questoes_sala(self, questoes_ids):
+        professor = self._professor()
         ids_normalizados = []
         for valor in questoes_ids:
             try:
@@ -27,7 +29,7 @@ class ServicoSalas(ServicoBase):
             raise ErroDominio("Selecione pelo menos uma questão para a sala.")
         for questao_id in ids_normalizados:
             questao = self.repositorio.buscar_questao(questao_id)
-            if questao is None or not questao.ativa:
+            if questao is None or not questao.ativa or questao.professor_id != professor.id:
                 raise ErroDominio("Uma das questões selecionadas não está disponível.")
         return ids_normalizados
 
@@ -40,14 +42,23 @@ class ServicoSalas(ServicoBase):
             raise ErroDominio("O nome da sala deve ter no máximo 80 caracteres.")
         return nome
 
-    def criar_sala_multijogador(self, nome, questoes_ids):
+    def criar_sala_multijogador(
+        self, nome, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+    ):
         professor = self._professor()
         nome = self._normalizar_nome_sala(nome)
         ids_normalizados = self._normalizar_questoes_sala(questoes_ids)
+        dados = normalizar_classificacao(ano_escolar, turma, sala_escolar)
         alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         codigo = "".join(secrets.choice(alfabeto) for _ in range(6))
         sala = self.repositorio.criar_sala_multijogador(
-            codigo, nome, professor.id, ids_normalizados
+            codigo,
+            nome,
+            professor.id,
+            ids_normalizados,
+            dados["ano_escolar"],
+            dados["turma"],
+            dados["sala_escolar"],
         )
         self.repositorio.registrar_evento(
             professor.perfil,
@@ -61,6 +72,31 @@ class ServicoSalas(ServicoBase):
     def listar_salas_professor(self):
         professor = self._professor()
         return self.repositorio.listar_salas_professor(professor.id)
+
+    def salas_sem_professor(self):
+        self._professor()
+        questoes = {questao.id: questao for questao in self.repositorio.listar_questoes()}
+        salas = []
+        for item in self.repositorio.listar_salas_professor(None):
+            if item["sala"].criador_id is not None:
+                continue
+            ids = self.repositorio.questoes_ids_sala_multijogador(item["sala"].id)
+            salas.append({
+                **item,
+                "questoes": [questoes[identificador] for identificador in ids if identificador in questoes],
+            })
+        return salas
+
+    def aderir_sala(self, codigo):
+        professor = self._professor()
+        sala = self.repositorio.aderir_sala_multijogador(
+            self._normalizar_codigo_sala(codigo), professor.id
+        )
+        self.repositorio.registrar_evento(
+            professor.perfil, "SALA_MULTIJOGADOR_ADERIDA", "PARTIDA", professor.id,
+            sala.id,
+        )
+        return sala
 
     def _sala_do_professor(self, codigo):
         professor = self._professor()
@@ -76,11 +112,21 @@ class ServicoSalas(ServicoBase):
             "questoes_ids": self.repositorio.questoes_ids_sala_multijogador(sala.id),
         }
 
-    def atualizar_sala_multijogador(self, codigo, nome, questoes_ids):
+    def atualizar_sala_multijogador(
+        self, codigo, nome, questoes_ids, ano_escolar="", turma="", sala_escolar=""
+    ):
         professor, sala = self._sala_do_professor(codigo)
         nome = self._normalizar_nome_sala(nome)
         ids_normalizados = self._normalizar_questoes_sala(questoes_ids)
-        self.repositorio.atualizar_sala_multijogador(sala.id, nome, ids_normalizados)
+        dados = normalizar_classificacao(ano_escolar, turma, sala_escolar)
+        self.repositorio.atualizar_sala_multijogador(
+            sala.id,
+            nome,
+            ids_normalizados,
+            dados["ano_escolar"],
+            dados["turma"],
+            dados["sala_escolar"],
+        )
         self.repositorio.registrar_evento(
             professor.perfil,
             "SALA_MULTIJOGADOR_EDITADA",
@@ -107,6 +153,8 @@ class ServicoSalas(ServicoBase):
         sala = self.repositorio.buscar_sala_multijogador(codigo)
         if sala is None or sala.status != "ABERTA":
             raise ErroDominio("Sala não encontrada ou encerrada.")
+        if not self.repositorio.salas.aluno_pertence_sala(aluno.id, sala.id):
+            raise ErroDominio("Você só pode entrar na sala do seu ano escolar e turma.")
         self.repositorio.entrar_sala_multijogador(sala.id, aluno.id)
         self.repositorio.registrar_evento(
             aluno.perfil,
@@ -117,11 +165,17 @@ class ServicoSalas(ServicoBase):
         )
         return sala
 
+    def minha_sala(self):
+        aluno = self._aluno()
+        return self.repositorio.salas.sala_academica_aluno(aluno.id)
+
     def estado_sala_multijogador(self, codigo):
         aluno = self._aluno()
         sala = self.repositorio.buscar_sala_multijogador(self._normalizar_codigo_sala(codigo))
         if sala is None:
             raise ErroDominio("Sala não encontrada.")
+        if not self.repositorio.salas.aluno_pertence_sala(aluno.id, sala.id):
+            raise AcessoNegado("Esta sala não corresponde ao seu cadastro escolar.")
         if not self.repositorio.participante_na_sala(sala.id, aluno.id):
             raise AcessoNegado("Entre na sala antes de acessar a partida.")
         questao = self.repositorio.buscar_questao(sala.questao_id)

@@ -6,7 +6,7 @@ from backend.taskflow.servicos.base import ServicoBase
 
 class ServicoJogos(ServicoBase):
     def _dificuldade_adaptativa(self, aluno_id):
-        recentes = self.repositorio.acertos_recentes(aluno_id)
+        recentes = self.repositorio.acertos_recentes(aluno_id, modo="BOT")
         if len(recentes) < 3:
             return "MÉDIO"
         aproveitamento = sum(recentes) / len(recentes)
@@ -34,8 +34,10 @@ class ServicoJogos(ServicoBase):
         if modo != "BOT":
             raise ErroDominio("Entre em uma sala para responder no multijogador.")
         questao = self.repositorio.buscar_questao(questao_id)
-        if questao is None or not questao.ativa:
-            raise ErroDominio("Esta questão não está mais disponível.")
+        if questao is None or not self.repositorio.salas.questao_autorizada_aluno(
+            aluno.id, questao.id
+        ):
+            raise ErroDominio("Esta questão não está disponível para sua sala.")
         try:
             indice_escolhido = int(indice_escolhido)
         except (TypeError, ValueError):
@@ -48,10 +50,9 @@ class ServicoJogos(ServicoBase):
         chance_bot = {"FÁCIL": 75, "MÉDIO": 60, "DIFÍCIL": 45}[questao.dificuldade]
         bot_acertou = secrets.randbelow(100) < chance_bot
         pontos_bot = questao.pontos if bot_acertou else 0
-        self.repositorio.registrar_tentativa(
+        self.repositorio.questoes.registrar_resposta_bot(
             aluno.id,
             questao,
-            modo,
             indice_escolhido,
             correta,
             pontos,

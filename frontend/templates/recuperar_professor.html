@@ -3,6 +3,7 @@
 {% block titulo %}Recuperar senha · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina"><p class="rotulo">RECUPERAÇÃO</p><h1>Senha do professor</h1><p>Use o código configurado anteriormente em Segurança.</p></section>
+<p class="acoes central"><a class="botao" href="{{ url_for('recuperar_email', perfil='PROFESSOR') }}">Prefiro recuperar por e-mail</a></p>
 <form class="painel formulario medio" method="post">
   {{ csrf_input(csrf) }}
   {{ campo('email', 'E-mail do professor', 'email', autocomplete='username') }}

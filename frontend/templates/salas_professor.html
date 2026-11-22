@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% from '_formularios.html' import csrf_input %}
+{% from '_campos_sala_academica.html' import campos_sala_academica with context %}
 {% block titulo %}Salas on-line · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina">
-  <p class="rotulo">PROFESSOR</p>
+  <p class="rotulo">ORGANIZAÇÃO ESCOLAR</p>
   <h1>Salas on-line</h1>
-  <p>Escolha as questões na ordem desejada e compartilhe o código com os alunos.</p>
+  <p>Organize as questões por ano escolar, turma e período. Os professores compartilham o acesso às salas.</p>
 </section>
 
 <section class="duas-colunas sala-layout">
@@ -14,13 +15,14 @@
     <h2>Criar nova sala</h2>
     <label class="campo">
       <span>Nome da sala</span>
-      <input name="nome" minlength="3" maxlength="80" required placeholder="Ex.: Revisão de Matemática">
+      <input name="nome" value="{{ request.form.get('nome', '') }}" minlength="3" maxlength="80" required placeholder="Ex.: Revisão de Matemática">
     </label>
+    {{ campos_sala_academica() }}
     {% if questoes %}
       <div class="lista-questoes-sala">
         {% for questao in questoes %}
           <label class="questao-selecao">
-            <input type="checkbox" name="questoes" value="{{ questao.id }}">
+            <input type="checkbox" name="questoes" value="{{ questao.id }}" {% if questao.id|string in request.form.getlist('questoes') %}checked{% endif %}>
             <span><strong>#{{ questao.id }} · {{ questao.tema }}</strong><small>{{ questao.dificuldade }} · {{ questao.enunciado }}</small></span>
           </label>
         {% endfor %}
@@ -39,18 +41,20 @@
       {% for item in salas %}
         <div>
           <span><strong>{{ item.sala.nome }}</strong> · {{ item.sala.status|title }}</span>
-          <strong>{{ item.total_alunos }} aluno(s)</strong>
-          <small>Código {{ item.sala.codigo }} · rodada {{ item.sala.rodada }} de {{ item.total_questoes }} questão(ões)</small>
+          <strong>{{ item.total_matriculados }} matriculado(s)</strong>
+          {% if item.sala.ano_escolar in ['6º ANO','7º ANO','8º ANO','9º ANO'] and item.sala.sala_escolar in ['MANHÃ','TARDE','INTEGRAL'] %}<small>{{ item.sala.ano_escolar }} · Turma {{ item.sala.turma }} · Período {{ item.sala.sala_escolar|capitalize }}</small>{% else %}<small>Classificação antiga: edite esta sala e selecione ano escolar e período.</small>{% endif %}
+          <small>Rodada {{ item.sala.rodada }} de {{ item.total_questoes }} questão(ões)</small>
+          <small>{{ item.total_alunos }} participante(s) na partida atual. O treino individual usa as questões ativas desta sala.</small>
           <div class="acoes acoes-sala">
             <a class="botao" href="{{ url_for('editar_sala_professor', codigo=item.sala.codigo) }}">Editar</a>
-            <form method="post" action="{{ url_for('excluir_sala_professor', codigo=item.sala.codigo) }}" data-confirmar="Excluir definitivamente a sala {{ item.sala.codigo }}?">
+            <form method="post" action="{{ url_for('excluir_sala_professor', codigo=item.sala.codigo) }}" data-confirmar="Excluir definitivamente a sala {{ item.sala.nome }}?">
               {{ csrf_input(csrf) }}
               <button class="botao perigo-borda" type="submit">Excluir</button>
             </form>
           </div>
         </div>
       {% else %}
-        <p class="dica">Nenhuma sala criada por este professor.</p>
+        <p class="dica">Nenhuma sala cadastrada.</p>
       {% endfor %}
     </div>
   </aside>

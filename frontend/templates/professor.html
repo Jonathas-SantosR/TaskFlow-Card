@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
-{% block titulo %}Painel do professor · TaskFlowCards{% endblock %}
+{% block titulo %}Painel administrativo · TaskFlowCards{% endblock %}
 {% block conteudo %}
-<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Painel administrativo</h1><p>Gerencie acessos e recursos pedagógicos.</p></section>
+<section class="cabecalho-pagina"><p class="rotulo">{{ usuario_atual.perfil }}</p><h1>Painel administrativo</h1><p>Gerencie acessos e recursos pedagógicos.</p></section>
+{% if usuario_atual.precisa_vincular_gmail %}<p class="aviso aviso">Gmail da conta pendente. Use VINCULAR_GMAIL.bat no computador do projeto com o ID {{ usuario_atual.id }} e sua senha atual.</p>{% endif %}
 <section class="grade-menu">
   <a class="cartao-menu categoria-jogo" href="{{ url_for('salas_professor') }}"><strong>Salas on-line</strong><span>Criar, editar e acompanhar partidas</span></a>
   <a class="cartao-menu categoria-conteudo" href="{{ url_for('questoes') }}"><strong>Banco de questões</strong><span>Cadastrar e liberar conteúdo</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('acervo_sem_professor') }}"><strong>Acervo sem professor</strong><span>Visualizar e assumir salas ou questões</span></a>
   <a class="cartao-menu categoria-jogo" href="{{ url_for('desempenho') }}"><strong>Dashboard</strong><span>Desempenho dos alunos e sinais de atenção</span></a>
   <a class="cartao-menu categoria-conteudo" href="{{ url_for('ia') }}"><strong>Questão com IA</strong><span>Gerar rascunho pedagógico</span></a>
-  <a class="cartao-menu categoria-administracao" href="{{ url_for('alunos') }}"><strong>Alunos</strong><span>Cadastrar e administrar contas</span></a>
-  <a class="cartao-menu categoria-administracao" href="{{ url_for('auditoria') }}"><strong>Auditoria</strong><span>Consultar eventos internos</span></a>
-  <a class="cartao-menu categoria-administracao" href="{{ url_for('seguranca') }}"><strong>Segurança</strong><span>Criar código para recuperar a senha</span></a>
+  <a class="cartao-menu categoria-administracao" href="{{ url_for('alunos') }}"><strong>Alunos</strong><span>Consultar alunos e suas salas</span></a>
+  <a class="cartao-menu categoria-jogo" href="{{ url_for('auditoria') }}"><strong>Logs</strong><span>Consultar eventos técnicos recentes</span></a>
   <a class="cartao-menu categoria-administracao" href="{{ url_for('conta') }}"><strong>Minha conta</strong><span>Anonimização ou saída definitiva</span></a>
 </section>
 {% endblock %}

@@ -1,40 +1,43 @@
 {% extends 'base.html' %}
 {% block titulo %}Dashboard pedagógica · TaskFlowCards{% endblock %}
 {% block conteudo %}
-<section class="cabecalho-pagina"><p class="rotulo">ACOMPANHAMENTO DO PROFESSOR</p><h1>Dashboard pedagógica</h1><p>Desempenho da turma · todos os alunos cadastrados · resultados acumulados</p></section>
-<section class="dashboard-indicadores" aria-label="Indicadores gerais">
-  <article class="painel"><span>Alunos</span><strong>{{ dashboard.total_alunos }}</strong><small>{{ dashboard.com_respostas }} com respostas</small></article>
-  <article class="painel"><span>Participação</span><strong>{{ dashboard.participacao }}%</strong><small>Alunos que responderam</small></article>
-  <article class="painel"><span>Aproveitamento</span><strong>{{ dashboard.aproveitamento }}%</strong><small>Acertos sobre todas as respostas</small></article>
-  <article class="painel"><span>Respostas</span><strong>{{ dashboard.respostas }}</strong><small>{{ dashboard.acertos }} acertos · {{ dashboard.erros }} erros</small></article>
-</section>
-<section class="dashboard-graficos">
-  <article class="painel"><h2>Acertos e erros</h2>
-    {% if dashboard.respostas %}
-      <div class="dashboard-faixa faixa-1"><div><span>Acertos</span><strong>{{ dashboard.acertos }}</strong></div><meter min="0" max="{{ dashboard.respostas }}" value="{{ dashboard.acertos }}" aria-label="{{ dashboard.acertos }} acertos em {{ dashboard.respostas }} respostas">{{ dashboard.acertos }}</meter></div>
-      <div class="dashboard-faixa faixa-3"><div><span>Erros</span><strong>{{ dashboard.erros }}</strong></div><meter min="0" max="{{ dashboard.respostas }}" value="{{ dashboard.erros }}" aria-label="{{ dashboard.erros }} erros em {{ dashboard.respostas }} respostas">{{ dashboard.erros }}</meter></div>
-    {% else %}<p>Aguardando as primeiras respostas para apresentar o gráfico.</p>{% endif %}
-    <p class="dica">Totais reais registrados no treino e nas salas.</p>
-  </article>
-  <article class="painel"><h2>Faixas de desempenho</h2><p>Quantidade de alunos por faixa de acertos.</p>
-    {% for faixa in dashboard.faixas[:3] %}<div class="dashboard-faixa faixa-{{ loop.index }}"><div><span>{{ faixa.nome }}</span><strong>{{ faixa.total }}</strong></div><meter min="0" max="{{ dashboard.com_respostas or 1 }}" value="{{ faixa.total }}" aria-label="{{ faixa.nome }}: {{ faixa.total }} alunos">{{ faixa.total }}</meter></div>{% endfor %}
-  </article>
-  <article class="painel"><h2>Sinais para o professor</h2>
-    {% if not dashboard.total_alunos %}<p>Nenhum aluno cadastrado. Cadastre alunos para começar o acompanhamento.</p>{% else %}
-    <p><strong>{{ dashboard.faixas[2].total }} aluno(s) precisam de apoio</strong><br>Revise os conteúdos com aproveitamento abaixo de 50%.</p>
-    <p><strong>{{ dashboard.faixas[0].total }} aluno(s) em destaque</strong><br>Aproveitamento igual ou superior a 80%.</p>{% endif %}
-    <small>As faixas apoiam o acompanhamento e não substituem a avaliação do professor. Poucas respostas podem produzir resultados pouco representativos.</small>
-  </article>
-</section>
-<section class="painel dashboard-tabela" tabindex="0" aria-label="Resultados por aluno, tabela com rolagem">
-  <table><caption>Resultados por aluno</caption><thead><tr><th>Aluno</th><th>Respostas</th><th>Acertos</th><th>Erros</th><th>Aproveitamento</th><th>Pontos</th><th>Faixa</th><th>Conta</th></tr></thead><tbody>
-    {% for aluno in dashboard.alunos %}
-      <tr><td>{{ aluno.nome }}</td><td>{{ aluno.total }}</td><td>{{ aluno.acertos }}</td><td>{{ aluno.erros }}</td><td>{{ ('%g'|format(aluno.percentual)) ~ '%' if aluno.total else 'Sem dados' }}</td><td>{{ aluno.pontos }}</td><td>{{ aluno.faixa }}</td><td>{{ 'Ativa' if aluno.ativo else 'Inativa' }}</td></tr>
-    {% else %}
-      <tr><td colspan="8">Nenhum aluno cadastrado.</td></tr>
-    {% endfor %}
-  </tbody></table>
-</section>
-<p class="dica">Resultados acumulados do treino e das salas on-line. Contas inativas permanecem no acompanhamento enquanto cadastradas.</p>
-<div class="acoes"><a class="botao" href="{{ url_for('desempenho') }}">Atualizar dados</a></div>
+<section class="cabecalho-pagina"><p class="rotulo">ACOMPANHAMENTO PEDAGÓGICO</p><h1>Dashboard pedagógica</h1><p>Selecione os alunos e as respostas que deseja acompanhar.</p></section>
+{% set filtros = dashboard.filtros %}
+<form class="painel formulario filtros-painel" method="get" action="{{ url_for('desempenho') }}" aria-label="Filtros da dashboard">
+  <h2>Filtrar resultados</h2>
+  <div class="campo"><label for="filtro-aluno">Aluno</label><select id="filtro-aluno" name="aluno_id">
+    <option value="">Todos os alunos</option>
+    {% for aluno in dashboard.opcoes_alunos %}<option value="{{ aluno.id }}" {{ 'selected' if filtros.aluno_id == aluno.id|string else '' }}>{{ aluno.nome }}{{ ' (inativo)' if not aluno.ativo else '' }}</option>{% endfor %}
+  </select></div>
+  <div class="campo"><label for="filtro-turma">Turma</label><select id="filtro-turma" name="turma">
+    <option value="">Todas as turmas</option>
+    {% for chave, nome in dashboard.opcoes_turmas %}<option value="{{ chave }}" {{ 'selected' if filtros.turma == chave else '' }}>{{ nome }}</option>{% endfor %}
+  </select></div>
+  <div class="campo"><label for="filtro-faixa">Faixa de desempenho</label><select id="filtro-faixa" name="faixa">
+    <option value="">Todas as faixas</option>
+    {% for faixa in dashboard.opcoes_faixas %}<option value="{{ faixa.name }}" {{ 'selected' if filtros.faixa == faixa.name else '' }}>{{ faixa.value }}</option>{% endfor %}
+  </select></div>
+  <div class="campo"><label for="filtro-bimestre">Bimestre do calendário</label><select id="filtro-bimestre" name="bimestre">
+    <option value="">Todo o período ou datas abaixo</option>
+    {% for valor, nome in dashboard.opcoes_bimestres %}<option value="{{ valor }}" {{ 'selected' if filtros.bimestre == valor else '' }}>{{ nome }}</option>{% endfor %}
+  </select></div>
+  <div class="campo"><label for="filtro-inicio">Data inicial</label><input id="filtro-inicio" type="date" name="data_inicio" value="{{ filtros.data_inicio }}"></div>
+  <div class="campo"><label for="filtro-fim">Data final</label><input id="filtro-fim" type="date" name="data_fim" value="{{ filtros.data_fim }}"></div>
+  <div class="campo"><label for="filtro-modo">Modo de jogo</label><select id="filtro-modo" name="modo">
+    <option value="">Todos os modos</option><option value="BOT" {{ 'selected' if filtros.modo == 'BOT' else '' }}>Treino contra o bot</option><option value="MULTIJOGADOR" {{ 'selected' if filtros.modo == 'MULTIJOGADOR' else '' }}>Multijogador</option>
+  </select></div>
+  <div class="campo"><label for="filtro-dificuldade">Dificuldade</label><select id="filtro-dificuldade" name="dificuldade">
+    <option value="">Todas as dificuldades</option>{% for nivel in ['FÁCIL','MÉDIO','DIFÍCIL'] %}<option value="{{ nivel }}" {{ 'selected' if filtros.dificuldade == nivel else '' }}>{{ nivel }}</option>{% endfor %}
+  </select></div>
+  <div class="campo"><label for="filtro-situacao">Situação da conta</label><select id="filtro-situacao" name="situacao">
+    <option value="">Ativas e inativas</option><option value="ATIVA" {{ 'selected' if filtros.situacao == 'ATIVA' else '' }}>Ativas</option><option value="INATIVA" {{ 'selected' if filtros.situacao == 'INATIVA' else '' }}>Inativas</option>
+  </select></div>
+  <div class="acoes"><button class="botao" type="submit">Aplicar filtros</button><a class="link" href="{{ url_for('desempenho') }}">Limpar filtros</a></div>
+  <p class="dica">O bimestre selecionado prevalece sobre as datas digitadas. O período inclui o dia inicial e o dia final, no horário de São Paulo. Todos os indicadores, gráficos e a tabela usam os mesmos filtros.</p>
+</form>
+<p class="dica" data-dashboard-status role="status">Resultados atualizados automaticamente a cada 10 segundos.</p>
+<div data-dashboard-resultados="{{ url_for('dados_desempenho', **filtros) }}">
+  {% include '_dados_desempenho.html' %}
+</div>
+<div class="acoes"><a class="botao" href="{{ url_for('desempenho', **filtros) }}">Atualizar dados</a></div>
 {% endblock %}

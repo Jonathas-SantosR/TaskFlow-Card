@@ -34,10 +34,12 @@ class CriptografiaDados:
         self._chave_indice = hashlib.sha256(b"taskflow-indice-v1:" + material).digest()
 
     @classmethod
-    def carregar(cls, arquivo, chave=None, permitir_criar=True):
+    def carregar(
+        cls, arquivo, chave=None, permitir_criar=True, variavel_ambiente="TASKFLOW_DATA_KEY"
+    ):
         """Carrega a chave externa ou cria uma chave local fora do banco."""
 
-        definida = chave or os.getenv("TASKFLOW_DATA_KEY", "").strip()
+        definida = chave or os.getenv(variavel_ambiente, "").strip()
         if definida:
             return cls(definida)
 
@@ -46,8 +48,8 @@ class CriptografiaDados:
             return cls(arquivo.read_text(encoding="ascii").strip())
         if not permitir_criar:
             raise ErroCriptografia(
-                "O banco contém dados criptografados, mas a chave não foi encontrada. "
-                "Restaure banco_de_dados/dados/.data_key ou informe TASKFLOW_DATA_KEY."
+                "Há dados criptografados, mas a chave não foi encontrada. "
+                f"Restaure {arquivo.name} ou informe {variavel_ambiente}."
             )
 
         arquivo.parent.mkdir(parents=True, exist_ok=True)
@@ -100,6 +102,20 @@ class AssinadorAuditoria:
 
     @classmethod
     def carregar(cls, arquivo):
+        semente = os.getenv("TASKFLOW_AUDIT_SEED", "").strip()
+        if semente:
+            try:
+                material = base64.b64decode(semente, altchars=b"-_", validate=True)
+                if len(material) != 32:
+                    raise ValueError("comprimento inválido")
+                return cls(Ed25519PrivateKey.from_private_bytes(material))
+            except (ValueError, binascii.Error) as erro:
+                raise ErroCriptografia("A semente privada de auditoria é inválida.") from erro
+        arquivo_secreto = os.getenv("TASKFLOW_AUDIT_PRIVATE_KEY_FILE", "").strip()
+        if arquivo_secreto:
+            arquivo = Path(arquivo_secreto)
+            if not arquivo.is_file():
+                raise ErroCriptografia("A chave privada de auditoria configurada não foi encontrada.")
         arquivo = Path(arquivo)
         arquivo.parent.mkdir(parents=True, exist_ok=True)
         if arquivo.exists():

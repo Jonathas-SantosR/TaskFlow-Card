@@ -9,7 +9,7 @@
 </head>
 <body>
   <header class="topo">
-    <a class="marca" href="{{ url_for('painel_professor') if usuario_atual and usuario_atual.perfil == 'PROFESSOR' else url_for('area_aluno') if usuario_atual else url_for('inicio') }}">
+    <a class="marca" href="{{ url_for('painel_professor') if usuario_atual and usuario_atual.pode_administrar else url_for('area_aluno') if usuario_atual else url_for('inicio') }}">
       <strong>TASKFLOWCARDS</strong><span>JOGO EDUCACIONAL</span>
     </a>
     {% if usuario_atual %}
@@ -25,7 +25,7 @@
 
   <main class="conteudo">
     {% if request.endpoint not in ['inicio', 'painel_professor', 'area_aluno'] %}
-      {% if usuario_atual and usuario_atual.eh_professor %}
+      {% if usuario_atual and usuario_atual.pode_administrar %}
         {% set painel_principal = url_for('painel_professor') %}
       {% elif usuario_atual and usuario_atual.eh_aluno %}
         {% set painel_principal = url_for('area_aluno') %}

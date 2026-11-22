@@ -1,24 +1,26 @@
 {% extends 'base.html' %}
 {% from '_formularios.html' import csrf_input %}
+{% from '_campos_sala_academica.html' import campos_sala_academica with context %}
 {% block titulo %}Editar {{ sala.nome }} · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina">
-  <p class="rotulo">CRUD DE SALAS</p>
+  <p class="rotulo">ORGANIZAÇÃO ESCOLAR</p>
   <h1>Editar {{ sala.nome }}</h1>
-  <p>Código da sala: <strong>{{ sala.codigo }}</strong></p>
   <p>Alterar a seleção reinicia a rodada, as respostas e o placar desta sala.</p>
 </section>
 <form method="post" class="painel formulario medio">
   {{ csrf_input(csrf) }}
   <label class="campo">
     <span>Nome da sala</span>
-    <input name="nome" value="{{ sala.nome }}" minlength="3" maxlength="80" required>
+    <input name="nome" value="{{ request.form.get('nome', sala.nome) }}" minlength="3" maxlength="80" required>
   </label>
+  {{ campos_sala_academica(sala) }}
+  <p class="dica">Se mudar o ano ou a turma, confira o vínculo dos alunos com a nova classificação. Ao trocar apenas o antigo número da sala por um período, os vínculos da turma são mantidos.</p>
   <h2>Questões da sala</h2>
   <div class="lista-questoes-sala">
     {% for questao in questoes %}
       <label class="questao-selecao">
-        <input type="checkbox" name="questoes" value="{{ questao.id }}" {% if questao.id in questoes_ids %}checked{% endif %}>
+        <input type="checkbox" name="questoes" value="{{ questao.id }}" {% if (request.method == 'POST' and questao.id|string in request.form.getlist('questoes')) or (request.method != 'POST' and questao.id in questoes_ids) %}checked{% endif %}>
         <span><strong>#{{ questao.id }} · {{ questao.tema }}</strong><small>{{ questao.dificuldade }} · {{ questao.enunciado }}</small></span>
       </label>
     {% endfor %}

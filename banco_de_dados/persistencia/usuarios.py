@@ -2,6 +2,7 @@ import secrets
 import sqlite3
 
 from backend.taskflow.dominio import (
+    EMAIL,
     PERFIL_ALUNO,
     PERFIL_PROFESSOR,
     ErroDominio,
@@ -30,7 +31,24 @@ class RepositorioUsuarios(RepositorioBase):
             criado_em=linha["criado_em"],
             primeiro_acesso=bool(linha["primeiro_acesso"]),
             anonimizado_em=linha["anonimizado_em"],
+            versao_sessao=int(linha["versao_sessao"]),
+            gmail_vinculado=bool(linha["chave_login_global"]),
+            idade=int(linha["idade"]) if linha["idade"] is not None else None,
         )
+
+    def _validar_gmail_disponivel(self, gmail, usuario_id=None):
+        chave = self.criptografia.indice(gmail)
+        conflito = self.conexao.execute(
+            "SELECT 1 FROM conflitos_identidade WHERE chave_email=?", (chave,)
+        ).fetchone()
+        existente = self.conexao.execute(
+            "SELECT id FROM usuarios WHERE chave_login_global=?", (chave,)
+        ).fetchone()
+        if conflito or (existente and existente["id"] != usuario_id):
+            raise ErroDominio(
+                "Este Gmail já está vinculado a uma conta. Entre nela ou recupere a senha."
+            )
+        return chave
 
     def possui_professor(self):
         with self._bloqueio:
@@ -43,75 +61,57 @@ class RepositorioUsuarios(RepositorioBase):
             )
 
     def criar_primeiro_professor(self, nome, email, senha):
-        nome = normalizar_nome(nome)
-        email = normalizar_identificador(PERFIL_PROFESSOR, email)
-        senha_hash = criar_hash(senha)
-        with self._bloqueio:
-            try:
-                self.conexao.execute("BEGIN IMMEDIATE")
-                if self.conexao.execute(
-                    """SELECT 1 FROM usuarios
-                    WHERE perfil='PROFESSOR' AND anonimizado_em IS NULL LIMIT 1"""
-                ).fetchone():
-                    raise ProfessorJaExiste("O primeiro professor já foi cadastrado.")
-                cursor = self.conexao.execute(
-                    """INSERT INTO usuarios
-                    (perfil,identificador,chave_identificador,nome,senha_hash,criado_em)
-                    VALUES(?,?,?,?,?,?)""",
-                    (
-                        PERFIL_PROFESSOR,
-                        self.criptografia.criptografar(email),
-                        self.criptografia.indice(email),
-                        self.criptografia.criptografar(nome),
-                        senha_hash,
-                        self._agora(),
-                    ),
-                )
-                self.conexao.commit()
-            except (sqlite3.IntegrityError, ErroIntegridadeBanco) as erro:
-                if self.conexao.in_transaction:
-                    self.conexao.rollback()
-                raise ProfessorJaExiste("O primeiro professor já foi cadastrado.") from erro
-            except Exception:
-                if self.conexao.in_transaction:
-                    self.conexao.rollback()
-                raise
-        return self.buscar_usuario(cursor.lastrowid)
+        return self._criar_usuario(
+            PERFIL_PROFESSOR, nome, email, senha, False, somente_primeiro=True
+        )
 
     def criar_usuario(self, perfil, nome, identificador, senha, primeiro_acesso=False):
-        """Cria uma conta individual para professor ou aluno."""
+        """Persiste uma conta; a autorização para criá-la pertence ao serviço."""
 
         if perfil not in {PERFIL_PROFESSOR, PERFIL_ALUNO}:
             raise ErroDominio("Perfil inválido.")
+        return self._criar_usuario(perfil, nome, identificador, senha, primeiro_acesso)
+
+    def _criar_usuario(
+        self, perfil, nome, identificador, senha, primeiro_acesso, *, somente_primeiro=False
+    ):
         nome = normalizar_nome(nome)
         identificador = normalizar_identificador(perfil, identificador)
+        senha_hash = criar_hash(senha)
         try:
             with self._bloqueio, self.conexao:
+                if perfil == PERFIL_PROFESSOR:
+                    # Serializa o cadastro com a operação legada de criar só o primeiro.
+                    if self.tipo_banco in {"mysql", "postgres"}:
+                        self.conexao.execute(
+                            "SELECT versao FROM versoes_esquema WHERE versao=1 FOR UPDATE"
+                        ).fetchone()
+                    elif not self.conexao.in_transaction:
+                        self.conexao.execute("BEGIN IMMEDIATE")
+                    if somente_primeiro and self.possui_professor():
+                        raise ProfessorJaExiste("O primeiro professor já foi cadastrado.")
+                chave_global = self._validar_gmail_disponivel(identificador)
                 cursor = self.conexao.execute(
                     """INSERT INTO usuarios
                     (perfil,identificador,chave_identificador,nome,senha_hash,
-                    criado_em,primeiro_acesso) VALUES(?,?,?,?,?,?,?)""",
+                    criado_em,primeiro_acesso,chave_login_global) VALUES(?,?,?,?,?,?,?,?)""",
                     (
                         perfil,
                         self.criptografia.criptografar(identificador),
                         self.criptografia.indice(identificador),
                         self.criptografia.criptografar(nome),
-                        criar_hash(senha),
+                        senha_hash,
                         self._agora(),
                         1 if primeiro_acesso else 0,
+                        chave_global,
                     ),
                 )
         except (sqlite3.IntegrityError, ErroIntegridadeBanco) as erro:
-            mensagem = (
-                "Já existe um professor com esse e-mail."
-                if perfil == PERFIL_PROFESSOR
-                else "Já existe um aluno com essa matrícula."
-            )
-            raise ErroDominio(mensagem) from erro
+            raise ErroDominio("Este Gmail já está vinculado a uma conta.") from erro
         return self.buscar_usuario(cursor.lastrowid)
 
-    def criar_aluno(self, nome, matricula, senha):
-        return self.criar_usuario(PERFIL_ALUNO, nome, matricula, senha, primeiro_acesso=True)
+    def criar_aluno(self, nome, gmail, senha):
+        return self.criar_usuario(PERFIL_ALUNO, nome, gmail, senha, primeiro_acesso=True)
 
     def buscar_usuario(self, usuario_id):
         with self._bloqueio:
@@ -120,37 +120,113 @@ class RepositorioUsuarios(RepositorioBase):
             ).fetchone()
         return self._usuario(linha) if linha else None
 
-    def autenticar(self, perfil, identificador, senha):
+    def _linha_por_login(self, perfil, identificador):
+        if perfil not in {PERFIL_PROFESSOR, PERFIL_ALUNO}:
+            return None
         try:
             identificador = normalizar_identificador(perfil, identificador)
         except ErroDominio:
-            return None
+            # Compatibilidade limitada ao professor anterior à exigência de Gmail.
+            # Matrículas de aluno e perfis descontinuados nunca são aceitos aqui.
+            if (
+                perfil != PERFIL_PROFESSOR
+                or not isinstance(identificador, str)
+                or len(identificador.strip()) > 254
+                or EMAIL.fullmatch(identificador.strip()) is None
+            ):
+                return None
+            consulta = """SELECT * FROM usuarios
+                WHERE perfil='PROFESSOR' AND chave_identificador=?
+                AND chave_login_global IS NULL AND ativo=1 AND anonimizado_em IS NULL"""
+        else:
+            consulta = """SELECT * FROM usuarios
+                WHERE perfil=? AND chave_login_global=? AND ativo=1
+                AND anonimizado_em IS NULL"""
+            with self._bloqueio:
+                return self.conexao.execute(
+                    consulta, (perfil, self.criptografia.indice(identificador))
+                ).fetchone()
         with self._bloqueio:
-            linha = self.conexao.execute(
-                """SELECT * FROM usuarios
-                WHERE perfil=? AND chave_identificador=? AND ativo=1
-                AND anonimizado_em IS NULL""",
-                (perfil, self.criptografia.indice(identificador)),
+            return self.conexao.execute(
+                consulta, (self.criptografia.indice(identificador),)
             ).fetchone()
+
+    def buscar_por_login(self, perfil, identificador):
+        linha = self._linha_por_login(perfil, identificador)
+        return self._usuario(linha) if linha else None
+
+    def autenticar(self, perfil, identificador, senha):
+        linha = self._linha_por_login(perfil, identificador)
         if linha is None or not conferir_senha(senha, linha["senha_hash"]):
             return None
         return self._usuario(linha)
 
-    def listar_alunos(self):
+    def vincular_gmail(self, usuario_id, email, senha_atual):
+        """Migra a própria conta após conferir sua senha, preservando ID e progresso."""
         with self._bloqueio:
-            linhas = self.conexao.execute(
-                """SELECT * FROM usuarios
-                WHERE perfil='ALUNO' AND anonimizado_em IS NULL ORDER BY id DESC"""
-            ).fetchall()
+            try:
+                self.conexao.execute("BEGIN IMMEDIATE")
+                consulta = """SELECT * FROM usuarios WHERE id=? AND ativo=1
+                    AND anonimizado_em IS NULL AND perfil IN ('PROFESSOR','ALUNO')"""
+                if self.tipo_banco in {"mysql", "postgres"}:
+                    consulta += " FOR UPDATE"
+                linha = self.conexao.execute(consulta, (int(usuario_id),)).fetchone()
+                if linha is None or not conferir_senha(senha_atual, linha["senha_hash"]):
+                    raise ErroDominio("Conta ou senha atual inválida.")
+                gmail = normalizar_identificador(linha["perfil"], email)
+                chave = self._validar_gmail_disponivel(gmail, int(usuario_id))
+                if linha["chave_login_global"] != chave:
+                    self.conexao.execute(
+                        """UPDATE usuarios SET identificador_legado=COALESCE(identificador_legado,identificador),
+                        identificador=?,chave_identificador=?,chave_login_global=?,
+                        versao_sessao=versao_sessao+1 WHERE id=?""",
+                        (self.criptografia.criptografar(gmail), chave, chave, int(usuario_id)),
+                    )
+                    self.conexao.execute(
+                        """UPDATE tokens_recuperacao SET usado_em=?
+                        WHERE usuario_id=? AND usado_em IS NULL""",
+                        (self._agora(), int(usuario_id)),
+                    )
+                self.conexao.commit()
+            except (sqlite3.IntegrityError, ErroIntegridadeBanco) as erro:
+                if self.conexao.in_transaction:
+                    self.conexao.rollback()
+                raise ErroDominio("Este Gmail já está vinculado a uma conta.") from erro
+            except Exception:
+                if self.conexao.in_transaction:
+                    self.conexao.rollback()
+                raise
+        return self.buscar_usuario(usuario_id)
+
+    def listar_alunos(self, professor_id=None):
+        consulta = """SELECT u.* FROM usuarios u
+            WHERE u.perfil='ALUNO' AND u.anonimizado_em IS NULL"""
+        parametros = ()
+        if professor_id is not None:
+            consulta += """ AND EXISTS (
+                SELECT 1 FROM perfil_aluno p
+                JOIN salas_multijogador s ON s.chave_academica=p.chave_academica
+                WHERE p.aluno_id=u.id AND s.criador_id=?
+            )"""
+            parametros = (int(professor_id),)
+        consulta += " ORDER BY u.id DESC"
+        with self._bloqueio:
+            linhas = self.conexao.execute(consulta, parametros).fetchall()
         return [self._usuario(linha) for linha in linhas]
 
     def definir_ativo(self, aluno_id, ativo):
         with self._bloqueio, self.conexao:
             cursor = self.conexao.execute(
-                """UPDATE usuarios SET ativo=?
+                """UPDATE usuarios SET ativo=?, versao_sessao=versao_sessao+1
                 WHERE id=? AND perfil='ALUNO' AND anonimizado_em IS NULL""",
                 (1 if ativo else 0, int(aluno_id)),
             )
+            if cursor.rowcount == 1:
+                self.conexao.execute(
+                    """UPDATE tokens_recuperacao SET usado_em=?
+                    WHERE usuario_id=? AND usado_em IS NULL""",
+                    (self._agora(), int(aluno_id)),
+                )
         if cursor.rowcount != 1:
             raise ErroDominio("Aluno não encontrado.")
         return self.buscar_usuario(aluno_id)
@@ -167,6 +243,9 @@ class RepositorioUsuarios(RepositorioBase):
             ).fetchall()
         ]
         self.conexao.execute("DELETE FROM aceites WHERE usuario_id=?", (usuario_id,))
+        self.conexao.execute("DELETE FROM emails_recuperacao WHERE usuario_id=?", (usuario_id,))
+        self.conexao.execute("DELETE FROM tokens_recuperacao WHERE usuario_id=?", (usuario_id,))
+        self.conexao.execute("DELETE FROM perfil_aluno WHERE aluno_id=?", (usuario_id,))
         self.conexao.execute(
             """UPDATE auditoria SET
             ator_id=CASE WHEN ator_id=? THEN NULL ELSE ator_id END,
@@ -206,12 +285,62 @@ class RepositorioUsuarios(RepositorioBase):
         senha_hash = criar_hash(senha)
         with self._bloqueio, self.conexao:
             cursor = self.conexao.execute(
-                "UPDATE usuarios SET senha_hash=?, primeiro_acesso=? WHERE id=?",
+                """UPDATE usuarios SET senha_hash=?, primeiro_acesso=?,
+                versao_sessao=versao_sessao+1 WHERE id=?""",
                 (senha_hash, 1 if primeiro_acesso else 0, int(usuario_id)),
             )
+            if cursor.rowcount == 1:
+                self.conexao.execute(
+                    """UPDATE tokens_recuperacao SET usado_em=?
+                    WHERE usuario_id=? AND usado_em IS NULL""",
+                    (self._agora(), int(usuario_id)),
+                )
         if cursor.rowcount != 1:
             raise ErroDominio("Usuário não encontrado.")
         return self.buscar_usuario(usuario_id)
+
+    def alterar_senha_titular(self, usuario_id, senha_atual, nova_senha):
+        senha_hash = criar_hash(nova_senha)
+        with self._bloqueio:
+            self.conexao.execute("BEGIN IMMEDIATE")
+            try:
+                consulta = """SELECT senha_hash FROM usuarios WHERE id=? AND ativo=1
+                    AND anonimizado_em IS NULL AND perfil IN ('PROFESSOR','ALUNO')"""
+                if self.tipo_banco in {"mysql", "postgres"}:
+                    consulta += " FOR UPDATE"
+                linha = self.conexao.execute(consulta, (int(usuario_id),)).fetchone()
+                if linha is None or not conferir_senha(senha_atual, linha["senha_hash"]):
+                    raise ErroDominio("Senha atual incorreta.")
+                if conferir_senha(nova_senha, linha["senha_hash"]):
+                    raise ErroDominio("Escolha uma senha diferente da atual.")
+                self.conexao.execute(
+                    """UPDATE usuarios SET senha_hash=?,versao_sessao=versao_sessao+1
+                    WHERE id=?""",
+                    (senha_hash, int(usuario_id)),
+                )
+                self.conexao.execute(
+                    """UPDATE tokens_recuperacao SET usado_em=?
+                    WHERE usuario_id=? AND usado_em IS NULL""",
+                    (self._agora(), int(usuario_id)),
+                )
+                self.conexao.commit()
+            except Exception:
+                if self.conexao.in_transaction:
+                    self.conexao.rollback()
+                raise
+        return self.buscar_usuario(usuario_id)
+
+    def definir_idade_professor(self, professor_id, idade):
+        with self._bloqueio, self.conexao:
+            self.conexao.execute(
+                """UPDATE usuarios SET idade=? WHERE id=? AND perfil='PROFESSOR'
+                AND ativo=1 AND anonimizado_em IS NULL""",
+                (int(idade), int(professor_id)),
+            )
+        professor = self.buscar_usuario(professor_id)
+        if professor is None or not professor.eh_professor or not professor.ativo:
+            raise ErroDominio("Professor não encontrado.")
+        return professor
 
     def configurar_recuperacao_professor(self, professor_id, codigo):
         codigo_hash = criar_hash(codigo)
@@ -289,7 +418,9 @@ class RepositorioUsuarios(RepositorioBase):
             cursor = self.conexao.execute(
                 """UPDATE usuarios SET
                 identificador=?, chave_identificador=?, nome=?, senha_hash=?,
-                ativo=0, primeiro_acesso=0, recuperacao_hash=NULL, anonimizado_em=?
+                ativo=0, primeiro_acesso=0, recuperacao_hash=NULL, idade=NULL, anonimizado_em=?,
+                chave_login_global=NULL, identificador_legado=NULL,
+                versao_sessao=versao_sessao+1
                 WHERE id=? AND anonimizado_em IS NULL""",
                 (
                     self.criptografia.criptografar(marcador),

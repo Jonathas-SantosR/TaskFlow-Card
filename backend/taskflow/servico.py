@@ -11,13 +11,12 @@ from backend.taskflow.servicos.salas import ServicoSalas
 class ServicoTaskFlow(ServicoBase):
     """Compõe serviços especializados e preserva a API utilizada pelas telas."""
 
-    def __init__(self, repositorio, gemini, tentativas=None, codigo_configuracao_professor=""):
+    def __init__(self, repositorio, gemini, tentativas=None):
         super().__init__(
             ContextoServico(
                 repositorio,
                 gemini,
                 tentativas if tentativas is not None else {},
-                str(codigo_configuracao_professor or "").strip(),
             )
         )
         self.contas = ServicoContas(self._contexto)
@@ -71,29 +70,26 @@ class ServicoTaskFlow(ServicoBase):
     def listar_alunos(self):
         return self.contas.listar_alunos()
 
-    def criar_aluno(self, nome, matricula, senha, confirmacao):
-        return self.contas.criar_aluno(nome, matricula, senha, confirmacao)
-
-    def alternar_aluno(self, aluno_id):
-        return self.contas.alternar_aluno(aluno_id)
-
-    def excluir_aluno(self, aluno_id):
-        return self.contas.excluir_aluno(aluno_id)
-
-    def redefinir_senha_aluno(self, aluno_id, senha, confirmacao):
-        return self.contas.redefinir_senha_aluno(aluno_id, senha, confirmacao)
-
-    def listar_auditoria(self):
-        return self.contas.listar_auditoria()
-
     def encerrar_conta(self, modo, senha, confirmacao):
         return self.contas.encerrar_conta(modo, senha, confirmacao)
+
+    def alterar_senha(self, senha_atual, nova_senha, confirmacao):
+        return self.contas.alterar_senha(senha_atual, nova_senha, confirmacao)
+
+    def atualizar_idade_professor(self, idade):
+        return self.contas.atualizar_idade_professor(idade)
 
     def gerar_questao(self, tema, dificuldade):
         return self.questoes.gerar_questao(tema, dificuldade)
 
     def listar_questoes(self):
         return self.questoes.listar_questoes()
+
+    def questoes_sem_professor(self):
+        return self.questoes.questoes_sem_professor()
+
+    def aderir_questao(self, questao_id):
+        return self.questoes.aderir_questao(questao_id)
 
     def criar_questao(
         self,
@@ -162,17 +158,29 @@ class ServicoTaskFlow(ServicoBase):
     def responder_questao(self, questao_id, indice_escolhido, modo):
         return self.jogos.responder_questao(questao_id, indice_escolhido, modo)
 
-    def criar_sala_multijogador(self, nome, questoes_ids):
-        return self.salas.criar_sala_multijogador(nome, questoes_ids)
+    def criar_sala_multijogador(self, nome, questoes_ids, ano_escolar, turma, sala_escolar):
+        return self.salas.criar_sala_multijogador(
+            nome, questoes_ids, ano_escolar, turma, sala_escolar
+        )
 
     def listar_salas_professor(self):
         return self.salas.listar_salas_professor()
 
+    def salas_sem_professor(self):
+        return self.salas.salas_sem_professor()
+
+    def aderir_sala(self, codigo):
+        return self.salas.aderir_sala(codigo)
+
     def dados_sala_professor(self, codigo):
         return self.salas.dados_sala_professor(codigo)
 
-    def atualizar_sala_multijogador(self, codigo, nome, questoes_ids):
-        return self.salas.atualizar_sala_multijogador(codigo, nome, questoes_ids)
+    def atualizar_sala_multijogador(
+        self, codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar
+    ):
+        return self.salas.atualizar_sala_multijogador(
+            codigo, nome, questoes_ids, ano_escolar, turma, sala_escolar
+        )
 
     def excluir_sala_multijogador(self, codigo):
         return self.salas.excluir_sala_multijogador(codigo)
@@ -189,11 +197,18 @@ class ServicoTaskFlow(ServicoBase):
     def avancar_rodada_multijogador(self, codigo):
         return self.salas.avancar_rodada_multijogador(codigo)
 
-    def meu_desempenho(self):
-        return self.desempenho.meu_desempenho()
+    def meu_desempenho(self, modo=None):
+        return self.desempenho.meu_desempenho(modo)
+
+    def reiniciar_treino_bot(self):
+        return self.desempenho.reiniciar_treino_bot()
 
     def desempenho_turma(self):
         return self.desempenho.desempenho_turma()
 
-    def dashboard_pedagogica(self):
-        return self.desempenho.dashboard_pedagogica()
+    def dashboard_pedagogica(self, filtros=None):
+        return self.desempenho.dashboard_pedagogica(filtros)
+
+    def listar_auditoria(self):
+        professor = self._professor()
+        return self.repositorio.listar_eventos(ator_id=professor.id)

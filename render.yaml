@@ -1,0 +1,35 @@
+databases:
+  - name: taskflowcards-pfc-db
+    plan: free
+    databaseName: taskflowcards
+    user: taskflowcards
+
+services:
+  - type: web
+    name: taskflowcards-pfc
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 4 --bind 0.0.0.0:$PORT 'backend.render_app:app'
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskflowcards-pfc-db
+          property: connectionString
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: TASKFLOW_AUDIT_SEED
+        sync: false
+      - key: TASKFLOW_DATA_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TASKFLOW_GMAIL_CLIENT_ID
+        sync: false
+      - key: TASKFLOW_GMAIL_CLIENT_SECRET
+        sync: false
+      - key: TASKFLOW_GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: TASKFLOW_GMAIL_SENDER
+        sync: false

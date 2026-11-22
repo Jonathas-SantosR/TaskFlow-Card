@@ -64,6 +64,16 @@ class RepositorioQuestoes(RepositorioBase):
             linhas = self.conexao.execute(consulta).fetchall()
         return [self._questao(linha) for linha in linhas]
 
+    def aderir_questao(self, questao_id, professor_id):
+        with self._bloqueio, self.conexao:
+            cursor = self.conexao.execute(
+                "UPDATE questoes SET professor_id=? WHERE id=? AND professor_id IS NULL",
+                (int(professor_id), int(questao_id)),
+            )
+        if cursor.rowcount != 1:
+            raise ErroDominio("Esta questão não está disponível para adesão.")
+        return self.buscar_questao(questao_id)
+
     def atualizar_questao(self, questao_id, dados):
         with self._bloqueio, self.conexao:
             cursor = self.conexao.execute(
@@ -139,13 +149,50 @@ class RepositorioQuestoes(RepositorioBase):
                 GROUP BY questao_id
             ) historico ON historico.questao_id=q.id
             WHERE q.ativa=1
+            AND EXISTS (
+                SELECT 1 FROM perfil_aluno a
+                JOIN usuarios u ON u.id=a.aluno_id AND u.ativo=1 AND u.perfil='ALUNO'
+                JOIN salas_multijogador s ON s.chave_academica=a.chave_academica
+                JOIN questoes_sala_multijogador sq ON sq.sala_id=s.id
+                WHERE a.aluno_id=? AND sq.questao_id=q.id
+            )
             ORDER BY
                 CASE WHEN historico.ultima_tentativa IS NULL THEN 0 ELSE 1 END,
                 historico.ultima_tentativa ASC,
                 CASE WHEN q.dificuldade=? THEN 0 ELSE 1 END,
                 RANDOM()
             LIMIT 1"""
-            parametros = [int(aluno_id), dificuldade or ""]
+            parametros = [int(aluno_id), int(aluno_id), dificuldade or ""]
         with self._bloqueio:
             linha = self.conexao.execute(consulta, parametros).fetchone()
         return self._questao(linha)
+
+    def registrar_resposta_bot(self, aluno_id, questao, indice_escolhido, correta, pontos):
+        """Confere a autorização na própria gravação, inclusive se a sala mudou."""
+
+        with self._bloqueio, self.conexao:
+            cursor = self.conexao.execute(
+                """INSERT INTO tentativas
+                (aluno_id,questao_id,modo,dificuldade,indice_escolhido,correta,pontos,respondida_em)
+                SELECT a.aluno_id,q.id,'BOT',q.dificuldade,?,?,?,?
+                FROM perfil_aluno a
+                JOIN usuarios u ON u.id=a.aluno_id AND u.ativo=1 AND u.perfil='ALUNO'
+                JOIN salas_multijogador s ON s.chave_academica=a.chave_academica
+                JOIN questoes_sala_multijogador sq ON sq.sala_id=s.id
+                JOIN questoes q ON q.id=sq.questao_id AND q.ativa=1
+                WHERE a.aluno_id=? AND q.id=? AND q.dificuldade=?
+                AND q.indice_correto=? AND q.alternativas_json=?""",
+                (
+                    int(indice_escolhido),
+                    1 if correta else 0,
+                    int(pontos),
+                    self._agora(),
+                    int(aluno_id),
+                    questao.id,
+                    questao.dificuldade,
+                    questao.indice_correto,
+                    json.dumps(questao.alternativas, ensure_ascii=False),
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise ErroDominio("A questão não está disponível para sua sala. Atualize o treino.")

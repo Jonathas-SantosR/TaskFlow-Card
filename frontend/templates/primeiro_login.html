@@ -1,14 +1,28 @@
 {% extends 'base.html' %}
 {% from '_formularios.html' import aceite_legal, campo, csrf_input %}
-{% block titulo %}Primeiro login · TaskFlowCards{% endblock %}
+{% from '_campos_sala_academica.html' import campos_sala_academica with context %}
+{% block titulo %}Primeiro acesso · TaskFlowCards{% endblock %}
 {% block conteudo %}
-<section class="cabecalho-pagina"><p class="rotulo">PRIMEIRO LOGIN</p><h1>Ative sua conta</h1><p>Crie sua senha pessoal e aceite os termos para liberar o acesso.</p></section>
+{% set aluno = usuario_atual.eh_aluno %}
+<section class="cabecalho-pagina">
+  <p class="rotulo">PRIMEIRO ACESSO</p>
+  <h1>{{ 'Complete seu perfil' if aluno else 'Ative sua conta' }}</h1>
+  <p>{{ 'Informe seus dados e escolha sua turma.' if aluno else 'Crie sua senha pessoal para liberar o acesso.' }}</p>
+</section>
 <form class="painel formulario medio" method="post">
   {{ csrf_input(csrf) }}
-  {{ campo('senha', 'Nova senha — mínimo de 12 caracteres', 'password', autocomplete='new-password') }}
-  {{ campo('confirmacao', 'Confirme a nova senha', 'password', autocomplete='new-password') }}
+  {% if aluno %}
+    {{ campo('nome', 'Nome completo', valor=request.form.get('nome', usuario_atual.nome if usuario_atual.nome != 'Aluno' else ''), autocomplete='name') }}
+    <label class="campo"><span>Idade</span><input name="idade" type="number" min="10" max="15" value="{{ request.form.get('idade', '') }}" required></label>
+    {{ campos_sala_academica() }}
+    <p class="dica">Você pode concluir o cadastro mesmo que o professor ainda não tenha criado a sala. Quando houver uma sala com o mesmo ano, turma e período, ela aparecerá automaticamente na sua área.</p>
+  {% endif %}
+  {% if usuario_atual.primeiro_acesso %}
+    {{ campo('senha', 'Nova senha com pelo menos 12 caracteres', 'password', autocomplete='new-password') }}
+    {{ campo('confirmacao', 'Confirme a nova senha', 'password', autocomplete='new-password') }}
+  {% endif %}
   {{ aceite_legal() }}
-  <button class="botao sucesso largura-total" type="submit">Aceitar e ativar conta</button>
-  <a class="link perigo" href="{{ url_for('conta') }}">Privacidade e saída</a>
+  <button class="botao sucesso largura-total" type="submit">Concluir primeiro acesso</button>
+  <a class="link" href="{{ url_for('conta') }}">Minha conta</a>
 </form>
 {% endblock %}

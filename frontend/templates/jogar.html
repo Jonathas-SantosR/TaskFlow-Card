@@ -3,6 +3,7 @@
 {% block titulo %}Contra Bot · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina"><p class="rotulo">JOGADOR AUTOMATIZADO</p><h1>Contra Bot</h1><p>Treinamento individual · {{ desempenho.acertos }}/{{ desempenho.total }} acertos · {{ desempenho.pontos }} pontos</p></section>
+{% if sala_academica %}<p class="dica">{{ sala_academica.nome }} · {{ sala_academica.ano_escolar }} · Turma {{ sala_academica.turma }} · Período {{ sala_academica.sala_escolar|capitalize }}. Somente questões ativas da sua sala.</p>{% endif %}
 {% if questao %}
 <section class="painel questao jogo">
   <div class="meta-questao"><span>{{ questao.tema }}</span><span>{{ questao.dificuldade }}</span></div>
@@ -31,6 +32,10 @@
   {% endif %}
 </section>
 {% else %}
-<section class="painel mensagem-grande"><h2>Banco sem questões ativas</h2><p>Peça ao professor para cadastrar e liberar pelo menos uma questão.</p></section>
+<section class="painel mensagem-grande">
+  {% if sala_academica %}<h2>Sua sala ainda não tem questões ativas</h2><p>Peça ao professor para vincular e liberar questões para o seu ano escolar, turma e sala.</p>
+  {% else %}<h2>Nenhuma sala vinculada</h2><p>Confira seu cadastro escolar e peça ao professor para cadastrar a sala correspondente ao seu ano escolar, turma e sala.</p>{% endif %}
+  <a class="botao" href="{{ url_for('area_aluno') }}">Voltar à minha área</a>
+</section>
 {% endif %}
 {% endblock %}

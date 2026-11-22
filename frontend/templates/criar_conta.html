@@ -5,15 +5,36 @@
 <section class="cabecalho-pagina">
   <p class="rotulo">PRIMEIRO ACESSO</p>
   <h1>Criar conta de {{ perfil|lower }}</h1>
-  <p>Informe seus dados e aceite os documentos legais para ativar a conta.</p>
+  <p>Use seu Gmail. Cada endereço pode ser associado a uma conta.</p>
 </section>
+{% if etapa_codigo and not email_cadastro %}
+<form class="painel formulario medio" method="post" action="{{ url_for('enviar_codigo_cadastro', perfil=perfil|lower) }}">
+  {{ csrf_input(csrf) }}
+  {{ campo('identificador', 'Seu Gmail', 'email', autocomplete='email') }}
+  <p class="ajuda">Enviaremos um código numérico para confirmar o Gmail antes de criar a conta.</p>
+  <div class="acoes"><button class="botao sucesso" type="submit">Enviar código ao Gmail</button>
+    <a class="botao" href="{{ url_for('login', perfil=perfil|lower) }}">Já tenho conta</a></div>
+</form>
+{% else %}
+{% if etapa_codigo %}
+<p class="aviso">Código enviado para {{ email_cadastro }}. Digite os seis números abaixo. O código expira em 10 minutos.</p>
+<form class="painel formulario medio" method="post" action="{{ url_for('enviar_codigo_cadastro', perfil=perfil|lower) }}">
+  {{ csrf_input(csrf) }}
+  <input type="hidden" name="identificador" value="{{ email_cadastro }}">
+  <div class="acoes"><button class="botao" type="submit">Enviar outro código</button>
+    <a class="botao" href="{{ url_for('criar_conta', perfil=perfil|lower, alterar=1) }}">Alterar Gmail</a></div>
+</form>
+{% endif %}
 <form class="painel formulario medio" method="post">
   {{ csrf_input(csrf) }}
-  {{ campo('nome', 'Nome') }}
-  {{ campo('identificador', 'E-mail do professor' if perfil == 'PROFESSOR' else 'Matrícula / RA', autocomplete='username') }}
   {% if perfil == 'PROFESSOR' %}
-    {{ campo('codigo_configuracao', 'Código de configuração do professor', 'password', autocomplete='off') }}
-    <p class="ajuda">Definido pelo responsável no servidor pela variável TASKFLOW_SETUP_CODE.</p>
+    {{ campo('nome', 'Nome do professor', valor=request.form.get('nome', ''), autocomplete='name') }}
+  {% endif %}
+  {% if etapa_codigo %}
+  <label class="campo"><span>Código recebido no Gmail</span>
+    <input name="codigo_email" type="text" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required></label>
+  {% else %}
+  {{ campo('identificador', 'Gmail', 'email', valor=request.form.get('identificador', ''), autocomplete='username') }}
   {% endif %}
   {{ campo('senha', 'Senha', 'password', autocomplete='new-password') }}
   {{ campo('confirmacao', 'Confirmar senha', 'password', autocomplete='new-password') }}
@@ -23,4 +44,5 @@
     <a class="botao" href="{{ url_for('login', perfil=perfil|lower) }}">Já tenho conta</a>
   </div>
 </form>
+{% endif %}
 {% endblock %}

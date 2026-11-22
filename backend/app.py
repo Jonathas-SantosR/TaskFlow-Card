@@ -1,15 +1,25 @@
 """Ponto de entrada da versão web orientada a objetos."""
 
 import logging
+import os
 from pathlib import Path
 
+from backend.taskflow.criptografia import ErroCriptografia
 from backend.taskflow.web import AplicacaoTaskFlowWeb
+from banco_de_dados.banco import ErroAutenticacaoMySQL, ErroConfiguracaoBanco
 
 RAIZ = Path(__file__).resolve().parent.parent
 
 
+def _pasta_dados():
+    return Path(os.environ.get("TASKFLOW_DATA_DIR") or RAIZ / "banco_de_dados" / "dados")
+
+
 def criar_aplicacao(configuracao=None):
     """Fábrica compatível com Flask e testes automatizados."""
+    if os.environ.get("TASKFLOW_DATA_DIR"):
+        configuracao = dict(configuracao or {})
+        configuracao.setdefault("BANCO", _pasta_dados() / "taskflow.sqlite3")
     return AplicacaoTaskFlowWeb(RAIZ, configuracao).criar()
 
 
@@ -34,10 +44,12 @@ def executar_servidor():
         # serve_forever ja terminou; shutdown e destinado a outra thread
         # enquanto o loop esta ativo. Aqui basta liberar o socket.
         servidor.server_close()
+        aplicacao.extensions["taskflow_recuperacao"].fechar()
+        aplicacao.extensions["taskflow_repositorio"].fechar()
 
 
 if __name__ == "__main__":
-    arquivo_log = RAIZ / "banco_de_dados" / "dados" / "inicializacao.log"
+    arquivo_log = _pasta_dados() / "inicializacao.log"
     arquivo_log.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         filename=arquivo_log,
@@ -46,6 +58,19 @@ if __name__ == "__main__":
     )
     try:
         executar_servidor()
+    except ErroAutenticacaoMySQL as erro:
+        logging.exception("Não foi possível autenticar no MySQL.")
+        print(erro, flush=True)
+        raise SystemExit(2) from None
+    except ErroCriptografia as erro:
+        logging.exception("Não foi possível abrir os dados do TaskFlowCards.")
+        print(erro, flush=True)
+        print("Confira o nome do banco MySQL e a chave de dados (.data_key) dessa instalação.", flush=True)
+        raise SystemExit(3) from None
+    except ErroConfiguracaoBanco as erro:
+        logging.exception("Não foi possível iniciar o TaskFlowCards.")
+        print(erro, flush=True)
+        raise SystemExit(1) from None
     except Exception:
         logging.exception("Não foi possível iniciar o TaskFlowCards.")
         print(

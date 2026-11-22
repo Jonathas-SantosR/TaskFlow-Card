@@ -12,7 +12,6 @@
 <section class="cabecalho-pagina">
   <p class="rotulo">MULTIJOGADOR ON-LINE</p>
   <h1>{{ sala.nome }}</h1>
-  <p>Código da sala: <strong>{{ sala.codigo }}</strong></p>
   {% if partida_encerrada %}
     <p>Partida finalizada · confira o placar final.</p>
   {% else %}
@@ -40,7 +39,7 @@
         <button class="botao sucesso" type="submit">Responder nesta rodada</button>
       </form>
     {% else %}
-      <div class="resultado resultado-bot"><strong>Aguardando outro aluno</strong><p>Compartilhe o código <b>{{ sala.codigo }}</b>. A resposta será liberada quando houver pelo menos dois participantes.</p></div>
+      <div class="resultado resultado-bot"><strong>Aguardando outro aluno</strong><p>A resposta será liberada quando outro aluno da mesma turma entrar na partida.</p></div>
     {% endif %}
   </article>
 

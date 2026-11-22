@@ -1,14 +1,43 @@
 {% extends 'base.html' %}
 {% from '_formularios.html' import campo %}
-{% block titulo %}Privacidade e saída · TaskFlowCards{% endblock %}
+{% block titulo %}Minha conta · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina">
   <p class="rotulo">MINHA CONTA</p>
-  <h1>Privacidade e saída</h1>
-  <p>Você controla a permanência dos seus dados pessoais no sistema.</p>
+  <h1>Minha conta</h1>
+  <p>Consulte seus dados e gerencie sua senha e privacidade.</p>
 </section>
 
-<section class="grade-privacidade">
+<section class="painel ficha conta-bloco" aria-label="Dados da conta">
+  <h2>Meus dados</h2>
+  <div><span>Nome</span><strong>{{ usuario_atual.nome }}</strong></div>
+  <div><span>Gmail de login</span><strong>{{ usuario_atual.identificador }}</strong></div>
+  <div><span>Idade</span><strong>{{ ((escolar.idade|string) ~ ' anos') if usuario_atual.eh_aluno and escolar else (((usuario_atual.idade|string) ~ ' anos') if usuario_atual.idade else 'Não informada') }}</strong></div>
+  <div><span>Senha</span><strong>Protegida; não pode ser exibida</strong></div>
+</section>
+
+{% if usuario_atual.eh_professor %}
+<form class="painel formulario medio conta-bloco" method="post" action="{{ url_for('idade_professor') }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <h2>Informar idade</h2>
+  <label class="campo"><span>Idade em anos completos</span><input type="number" name="idade" min="1" max="120" value="{{ usuario_atual.idade or '' }}" required></label>
+  <button class="botao" type="submit">Salvar idade</button>
+</form>
+{% endif %}
+
+<form class="painel formulario medio conta-bloco" method="post" action="{{ url_for('alterar_senha') }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <h2>Alterar senha</h2>
+  {{ campo('senha_atual', 'Senha atual', 'password', autocomplete='current-password') }}
+  <label class="campo"><span>Nova senha (12 a 128 caracteres)</span><input type="password" name="nova_senha" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+  <label class="campo"><span>Confirme a nova senha</span><input type="password" name="confirmacao_nova" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+  <button class="botao sucesso" type="submit">Salvar nova senha</button>
+</form>
+
+<h2>Privacidade e saída</h2>
+
+<section class="{{ 'grade-privacidade' if usuario_atual.eh_professor else '' }}">
+  {% if usuario_atual.eh_professor %}
   <form class="painel formulario" method="post" data-confirmar="Anonimizar sua conta agora? Esta ação não pode ser desfeita.">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="modo" value="ANONIMIZAR">
@@ -18,15 +47,16 @@
     {{ campo('confirmacao', 'Digite ANONIMIZAR para confirmar', autocomplete='off') }}
     <button class="botao amarelo largura-total" type="submit">Solicitar anonimização</button>
   </form>
+  {% endif %}
 
-  <form class="painel formulario" method="post" data-confirmar="Excluir definitivamente sua conta? Esta ação não pode ser desfeita.">
+  <form class="painel formulario {{ 'medio' if usuario_atual.eh_aluno else '' }}" method="post" data-confirmar="Excluir definitivamente sua conta agora?">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="modo" value="EXCLUIR">
     <h2>Exclusão definitiva</h2>
-    <p class="dica">Seu cadastro, credencial e aceite serão apagados. As referências na auditoria serão desvinculadas e você sairá do sistema.</p>
+    <p class="dica">Após a confirmação, seus dados cadastrais, credencial e aceite são excluídos imediatamente e a sessão é encerrada.</p>
     {{ campo('senha', 'Senha atual', 'password', autocomplete='current-password') }}
     {{ campo('confirmacao', 'Digite EXCLUIR para confirmar', autocomplete='off') }}
-    <button class="botao perigo-borda largura-total" type="submit">Solicitar exclusão definitiva</button>
+    <button class="botao perigo-borda largura-total" type="submit">Excluir minha conta agora</button>
   </form>
 </section>
 

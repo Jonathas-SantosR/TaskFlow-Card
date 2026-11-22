@@ -2,11 +2,31 @@
 {% block titulo %}Área do aluno · TaskFlowCards{% endblock %}
 {% block conteudo %}
 <section class="cabecalho-pagina"><p class="rotulo">ALUNO</p><h1>Minha área</h1><p>Consulta restrita ao próprio perfil.</p></section>
-<section class="painel ficha"><div><span>Nome</span><strong>{{ usuario_atual.nome }}</strong></div><div><span>Matrícula</span><strong>{{ usuario_atual.identificador }}</strong></div><div><span>Perfil</span><strong>{{ usuario_atual.perfil }}</strong></div><div><span>Status</span><strong class="verde">Ativo</strong></div></section>
-<section class="grade-menu grade-jogo">
-  <a class="cartao-menu sucesso" href="{{ url_for('jogar', modo='bot') }}"><strong>Contra Bot</strong><span>Treinamento individual contra um jogador automatizado</span></a>
-  <a class="cartao-menu amarelo" href="{{ url_for('multijogador') }}"><strong>Multijogador On-line</strong><span>Entre com o código da sala criada pelo professor</span></a>
+<section class="painel ficha">
+  <div><span>Nome</span><strong>{{ usuario_atual.nome }}</strong></div>
+  <div><span>Gmail</span><strong>{{ usuario_atual.identificador }}</strong></div>
+  <div><span>Idade</span><strong>{{ escolar.idade }} anos</strong></div>
+  <div><span>Ano escolar</span><strong>{{ escolar.ano_escolar }}</strong></div>
+  <div><span>Turma</span><strong>{{ escolar.turma }}</strong></div>
+  <div><span>Período</span><strong>{{ escolar.sala_escolar|capitalize }}</strong></div>
 </section>
-<section class="painel resumo-desempenho"><strong>{{ desempenho.percentual }}%</strong><span>{{ desempenho.acertos }} acertos em {{ desempenho.total }} respostas · {{ desempenho.pontos }} pontos</span></section>
-<div class="acoes central"><a class="botao" href="{{ url_for('conta') }}">Privacidade e saída</a></div>
+{% if sala %}<p class="aviso sucesso">Sala vinculada automaticamente: {{ sala.nome }}.</p>
+{% else %}<p class="aviso aviso">Sua sala ainda não foi criada para este ano, turma e período. Você já está cadastrado; esta página verifica a sala a cada minuto.</p>{% endif %}
+{% if sala %}
+<section class="grade-menu grade-jogo">
+  <a class="cartao-menu sucesso" href="{{ url_for('jogar', modo='bot') }}"><strong>Contra Bot</strong><span>Treino individual com as questões da sua sala</span></a>
+  <a class="cartao-menu amarelo" href="{{ url_for('multijogador') }}"><strong>Multijogador On-line</strong><span>Entre na partida da sua sala</span></a>
+</section>
+{% endif %}
+<section class="painel resumo-desempenho" aria-label="Desempenho no treino contra bot">
+  <div><h2>Treino contra bot</h2><p>{{ desempenho.total }} respostas · {{ desempenho.pontos }} pontos</p></div>
+  <div><strong>{{ desempenho.percentual }}%</strong><span>Acertos: {{ desempenho.acertos }}</span></div>
+  <div><strong>{{ (100 - desempenho.percentual) if desempenho.total else 0 }}%</strong><span>Erros: {{ desempenho.total - desempenho.acertos }}</span></div>
+  <form method="post" action="{{ url_for('reiniciar_treino_bot') }}" data-confirmar="Reiniciar seu treino contra bot? As respostas, acertos, erros e pontos desse modo serão apagados do histórico.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="botao perigo-borda" type="submit">Resetar treino</button>
+  </form>
+</section>
+<div class="acoes central"><a class="botao" href="{{ url_for('conta') }}">Minha conta</a></div>
+<script defer src="{{ url_for('static', filename='sala_aluno.js') }}" data-url="{{ url_for('dados_sala_aluno') }}" data-codigo="{{ sala.codigo if sala else '' }}"></script>
 {% endblock %}
