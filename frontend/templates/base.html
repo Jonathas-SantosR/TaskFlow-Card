@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
-<body>
+<body{% if usuario_atual %} hidden{% endif %}>
   <header class="topo">
     <a class="marca" href="{{ url_for('painel_professor') if usuario_atual and usuario_atual.pode_administrar else url_for('area_aluno') if usuario_atual else url_for('inicio') }}">
       <strong>TASKFLOWCARDS</strong><span>JOGO EDUCACIONAL</span>
@@ -49,8 +49,10 @@
   </main>
   <footer class="rodape"><a href="{{ url_for('termos') }}">Termos de Uso e Política de Privacidade</a><span>Protótipo acadêmico TaskFlowCards</span></footer>
 {% if usuario_atual %}
-<script src="{{ url_for('static', filename='sessao.js') }}" defer
- data-csrf="{{ csrf }}" data-partida="{{ '1' if request.endpoint in ['jogar', 'sala_multijogador'] else '0' }}"></script>
+<script id="sessao-aba" src="{{ url_for('static', filename='sessao.js', v='2') }}" defer
+ data-csrf="{{ csrf }}" data-vinculo="{{ vinculo_aba }}"
+ data-login="{{ url_for('login', perfil=usuario_atual.perfil|lower) }}"
+ data-partida="{{ '1' if request.endpoint in ['jogar', 'sala_multijogador'] else '0' }}"></script>
 {% endif %}
 </body>
 </html>

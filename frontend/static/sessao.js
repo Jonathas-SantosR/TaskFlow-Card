@@ -1,5 +1,45 @@
 (() => {
-  const script = document.querySelector('script[src*="sessao.js"]');
+  const script = document.getElementById('sessao-aba');
+  const chaveAba = 'taskflowcards:sessao-aba';
+  const vinculo = script.dataset.vinculo;
+
+  function abaAutenticada() {
+    try {
+      return Boolean(vinculo) && sessionStorage.getItem(chaveAba) === vinculo;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  const inicio = new URLSearchParams(location.hash.slice(1)).get('iniciar-aba');
+  if (inicio !== null) {
+    history.replaceState(null, '', location.pathname + location.search);
+    try {
+      if (vinculo && inicio === vinculo) sessionStorage.setItem(chaveAba, vinculo);
+    } catch (_) { /* A aba precisa aceitar armazenamento para manter a sessão. */ }
+  }
+
+  function voltarAoLogin() {
+    document.body.hidden = true;
+    fetch('/sessao/atividade', {method: 'POST',
+      body: new URLSearchParams({csrf: script.dataset.csrf, reabrir: '1'}),
+      keepalive: true})
+      .finally(() => location.replace(script.dataset.login));
+  }
+
+  if (!abaAutenticada()) {
+    voltarAoLogin();
+    return;
+  }
+
+  document.body.hidden = false;
+  window.addEventListener('pagehide', () => { document.body.hidden = true; });
+  window.addEventListener('pageshow', (evento) => {
+    if (!evento.persisted) return;
+    if (abaAutenticada()) document.body.hidden = false;
+    else voltarAoLogin();
+  });
+
   const partida = script.dataset.partida === '1';
   let ultima = Date.now();
   let atividade = true;

@@ -96,13 +96,15 @@ class GerenciadorSessao:
 
     @staticmethod
     def autenticar(usuario):
-        # Descarta o estado anterior e cria um token CSRF para a nova sessão.
+        # Descarta o estado anterior e cria tokens para a sessão e para a aba.
         session.clear()
         session.permanent = False
         session["usuario_id"] = usuario.id
         session["versao_sessao"] = usuario.versao_sessao
         session["ultima_atividade"] = time.time()
         session["csrf"] = secrets.token_urlsafe(32)
+        session["vinculo_aba"] = secrets.token_urlsafe(24)
+        return f'iniciar-aba={session["vinculo_aba"]}'
 
     @staticmethod
     def encerrar():
@@ -237,10 +239,10 @@ class VisaoCriarConta(ControladorBase):
                 request.form.get("confirmacao", ""),
                 request.form.get("aceitou") == "1",
             )
-            self.sessoes.autenticar(usuario)
+            ancora = self.sessoes.autenticar(usuario)
             flash("Conta criada com sucesso.", "sucesso")
             destino = "painel_professor" if usuario.eh_professor else "primeiro_login"
-            return redirect(url_for(destino))
+            return redirect(url_for(destino, _anchor=ancora))
         except (ErroDominio, AcessoNegado) as erro:
             flash(str(erro), "erro")
             return self._pagina(perfil_normalizado)
@@ -290,17 +292,16 @@ class VisaoLogin(ControladorBase):
                 request.form.get("identificador", ""),
                 request.form.get("senha", ""),
             )
-            self.sessoes.autenticar(usuario)
+            ancora = self.sessoes.autenticar(usuario)
             # Direciona para o primeiro acesso ou para o painel do perfil autenticado.
             if usuario.primeiro_acesso or (
                 usuario.eh_aluno
                 and self.dependencias.repositorio.salas.buscar_perfil_aluno(usuario.id) is None
             ):
                 flash("Complete o primeiro acesso para continuar.", "aviso")
-                return redirect(url_for("primeiro_login"))
-            if usuario.pode_administrar:
-                return redirect(url_for("painel_professor"))
-            return redirect(url_for("area_aluno"))
+                return redirect(url_for("primeiro_login", _anchor=ancora))
+            destino = "painel_professor" if usuario.pode_administrar else "area_aluno"
+            return redirect(url_for(destino, _anchor=ancora))
         except ErroDominio as erro:
             flash(str(erro), "erro")
             return render_template("login.html", perfil=perfil_normalizado)
@@ -336,9 +337,9 @@ class VisaoPrimeiroLogin(ControladorProtegido):
                 )
             else:
                 usuario = self.servico.alterar_senha_primeiro_acesso(senha, confirmacao, aceitou)
-            self.sessoes.autenticar(usuario)
+            ancora = self.sessoes.autenticar(usuario)
             flash("Primeiro login concluído.", "sucesso")
-            return redirect(url_for(self._destino(usuario)))
+            return redirect(url_for(self._destino(usuario), _anchor=ancora))
         except (ErroDominio, AcessoNegado) as erro:
             flash(str(erro), "erro")
             return self.get(), 400
@@ -935,9 +936,9 @@ class VisaoAlterarSenha(ControladorProtegido):
                 request.form.get("nova_senha", ""),
                 request.form.get("confirmacao_nova", ""),
             )
-            self.sessoes.autenticar(usuario)
+            ancora = self.sessoes.autenticar(usuario)
             flash("Senha alterada. As outras sessões foram encerradas.", "sucesso")
-            return redirect(url_for("conta"))
+            return redirect(url_for("conta", _anchor=ancora))
         except (ErroDominio, AcessoNegado) as erro:
             flash(str(erro), "erro")
             return redirect(url_for("conta"))
@@ -1138,7 +1139,7 @@ class AplicacaoTaskFlowWeb:
             g.perfil_pendente = False
             acesso_direto = (
                 request.method == "GET"
-                and request.headers.get("Sec-Fetch-Site") == "none"
+                and request.headers.get("Sec-Fetch-Site") in {"none", "cross-site", "same-site"}
                 and request.headers.get("Sec-Fetch-Mode") == "navigate"
             )
             if g.usuario and acesso_direto:
@@ -1189,6 +1190,10 @@ class AplicacaoTaskFlowWeb:
         def atividade_sessao():
             if not g.usuario:
                 return "", 401
+            if request.form.get("reabrir") == "1":
+                self.sessoes.encerrar()
+                flash("Entre novamente para continuar nesta aba.", "aviso")
+                return "", 204
             if request.form.get("expirar") == "1":
                 session.clear()
                 flash("Sua sessão expirou após 10 minutos sem atividade. Entre novamente.", "erro")
@@ -1201,6 +1206,7 @@ class AplicacaoTaskFlowWeb:
             return {
                 "csrf": ProtecaoCsrf.token(),
                 "usuario_atual": g.usuario,
+                "vinculo_aba": session.get("vinculo_aba", ""),
                 "ia_configurada": ia_configurada,
                 "ia_disponivel": getattr(gemini, "disponivel", ia_configurada),
             }
