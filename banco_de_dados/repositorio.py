@@ -14,7 +14,7 @@ from banco_de_dados.persistencia.usuarios import RepositorioUsuarios
 from banco_de_dados.persistencia.verificacao_cadastro import RepositorioVerificacaoCadastro
 
 
-VERSAO_DOCUMENTOS_LEGAIS = "2026-11-v5"
+VERSAO_DOCUMENTOS_LEGAIS = "2026-11-v6"
 
 
 class RepositorioTaskFlow(RepositorioBase):
@@ -153,8 +153,10 @@ class RepositorioTaskFlow(RepositorioBase):
     def registrar_evento(self, perfil, evento, recurso, ator_id=None, alvo_id=None):
         return self.auditoria.registrar_evento(perfil, evento, recurso, ator_id, alvo_id)
 
-    def listar_eventos(self, limite=100, ator_id=None):
-        return self.auditoria.listar_eventos(limite, ator_id)
+    def listar_eventos(self, limite=100, ator_id=None, *, incluir_sessoes_alunos=False):
+        return self.auditoria.listar_eventos(
+            limite, ator_id, incluir_sessoes_alunos=incluir_sessoes_alunos
+        )
 
     def criar_questao(self, professor_id, dados):
         return self.questoes.criar_questao(professor_id, dados)

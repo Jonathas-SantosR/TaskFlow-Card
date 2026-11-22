@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block titulo %}Logs · TaskFlowCards{% endblock %}
 {% block conteudo %}
-<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Logs do sistema</h1><p>Até 100 eventos técnicos dos últimos 14 dias. A integridade indica se a assinatura do evento foi verificada.</p></section>
+<section class="cabecalho-pagina"><p class="rotulo">PROFESSOR</p><h1>Logs do sistema</h1><p>Suas ações e os registros de entrada e saída do sistema dos alunos vinculados às suas salas. Até 100 eventos dos últimos 14 dias. A integridade indica se a assinatura do evento foi verificada.</p></section>
 <p class="dica" data-auditoria-status role="status">Atualização automática a cada 10 segundos.</p>
 <div data-auditoria-resultados="{{ url_for('dados_auditoria') }}">{% include '_dados_auditoria.html' %}</div>
 <div class="acoes"><a class="botao" href="{{ url_for('auditoria') }}">Atualizar agora</a><a class="botao" href="{{ url_for('painel_professor') }}">Voltar</a></div>

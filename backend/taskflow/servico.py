@@ -211,4 +211,4 @@ class ServicoTaskFlow(ServicoBase):
 
     def listar_auditoria(self):
         professor = self._professor()
-        return self.repositorio.listar_eventos(ator_id=professor.id)
+        return self.repositorio.listar_eventos(ator_id=professor.id, incluir_sessoes_alunos=True)

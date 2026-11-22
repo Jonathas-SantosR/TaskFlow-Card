@@ -109,14 +109,29 @@ class RepositorioAuditoria(RepositorioBase):
                 (ocorrido_em, ator_id, perfil, evento, recurso, alvo_id, assinatura),
             )
 
-    def listar_eventos(self, limite=100, ator_id=None):
-        consulta = """SELECT ocorrido_em,ator_id,perfil,evento,recurso,alvo_id,assinatura
-                FROM auditoria"""
+    def listar_eventos(self, limite=100, ator_id=None, *, incluir_sessoes_alunos=False):
+        consulta = """SELECT log.ocorrido_em,log.ator_id,log.perfil,log.evento,log.recurso,
+                            log.alvo_id,log.assinatura
+                FROM auditoria log"""
         parametros = []
         if ator_id is not None:
-            consulta += " WHERE ator_id=?"
+            consulta += " WHERE log.ator_id=?"
             parametros.append(int(ator_id))
-        consulta += " ORDER BY id DESC LIMIT ?"
+            if incluir_sessoes_alunos:
+                # O vínculo usa a mesma classificação escolar da lista de alunos.
+                consulta += """ OR (
+                    log.perfil='ALUNO' AND log.recurso='SESSAO'
+                    AND log.evento IN ('LOGIN_OK', 'LOGOUT')
+                    AND EXISTS (
+                        SELECT 1 FROM perfil_aluno p
+                        JOIN usuarios u ON u.id=p.aluno_id AND u.ativo=1
+                            AND u.perfil='ALUNO' AND u.anonimizado_em IS NULL
+                        JOIN salas_multijogador s ON s.chave_academica=p.chave_academica
+                        WHERE p.aluno_id=log.ator_id AND s.criador_id=?
+                    )
+                )"""
+                parametros.append(int(ator_id))
+        consulta += " ORDER BY log.id DESC LIMIT ?"
         parametros.append(min(max(int(limite), 1), 100))
         with self._bloqueio, self.conexao:
             self._remover_eventos_expirados()
