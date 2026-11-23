@@ -7,7 +7,7 @@ from backend.taskflow.classificacao import (
     normalizar_classificacao,
     validar_idade_aluno,
 )
-from backend.taskflow.dominio import ErroDominio, SalaMultijogador
+from backend.taskflow.dominio import Desempenho, ErroDominio, SalaMultijogador
 from banco_de_dados.banco import ErroIntegridadeBanco
 from banco_de_dados.persistencia.base import RepositorioBase
 
@@ -424,6 +424,18 @@ class RepositorioSalas(RepositorioBase):
                 (int(sala.id), int(sala.rodada), int(aluno_id)),
             ).fetchone()
         return dict(linha) if linha else None
+
+    def desempenho_partida(self, sala_id, aluno_id):
+        with self._bloqueio:
+            linha = self.conexao.execute(
+                """SELECT COUNT(*) AS total, COALESCE(SUM(correta),0) AS acertos,
+                COALESCE(SUM(pontos),0) AS pontos FROM respostas_multijogador
+                WHERE sala_id=? AND aluno_id=?""",
+                (int(sala_id), int(aluno_id)),
+            ).fetchone()
+        return Desempenho(
+            total=int(linha["total"]), acertos=int(linha["acertos"]), pontos=int(linha["pontos"]),
+        )
 
     def registrar_resposta_multijogador(
         self, sala, aluno_id, questao, indice_escolhido, correta, pontos

@@ -166,14 +166,50 @@ if (salaSincronizada) {
       }
     }, 5000);
   } else if (salaSincronizada.dataset.autoAtualizar) {
-    window.setTimeout(function atualizarSala() {
+    const formulario = salaSincronizada.querySelector("[data-rodada-aberta]");
+    const placar = salaSincronizada.querySelector("[data-placar-sala]");
+    let enviandoResposta = false;
+    formulario?.addEventListener("submit", () => { enviandoResposta = true; });
+
+    async function atualizarSala() {
+      if (enviandoResposta) return;
       const sintese = window.speechSynthesis;
       if (sintese?.speaking || sintese?.pending) {
         window.setTimeout(atualizarSala, 1000);
         return;
       }
-      window.location.reload();
-    }, 3000);
+      if (!formulario) {
+        window.location.reload();
+        return;
+      }
+
+      try {
+        const resposta = await fetch(window.location.href, { cache: "no-store" });
+        if (resposta.redirected || resposta.status === 401 || resposta.status === 403) {
+          if (!enviandoResposta) window.location.reload();
+          return;
+        }
+        if (resposta.ok) {
+          const pagina = new DOMParser().parseFromString(await resposta.text(), "text/html");
+          if (enviandoResposta) return;
+          const rodada = pagina.querySelector("[data-rodada-aberta]");
+          if (rodada?.dataset.rodadaAberta !== formulario.dataset.rodadaAberta) {
+            window.location.reload();
+            return;
+          }
+          // Mantém o formulário, inclusive a seleção e o foco do aluno.
+          const placarAtualizado = pagina.querySelector("[data-placar-sala]");
+          if (placarAtualizado && placar.innerHTML !== placarAtualizado.innerHTML) {
+            placar.innerHTML = placarAtualizado.innerHTML;
+          }
+        }
+      } catch (_) {
+        // Uma falha na consulta não interrompe o preenchimento da resposta.
+      }
+      window.setTimeout(atualizarSala, 3000);
+    }
+
+    window.setTimeout(atualizarSala, 3000);
   }
 }
 

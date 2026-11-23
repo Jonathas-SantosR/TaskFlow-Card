@@ -31,7 +31,8 @@
         <p>Resposta correta: {{ minha_resposta.alternativa_correta }}{% if minha_resposta.pontos_recebidos %} · +{{ minha_resposta.pontos_recebidos }} ponto(s){% endif %}</p>
       </div>
     {% elif pode_responder %}
-      <form method="post" class="formulario respostas">
+      <form method="post" class="formulario respostas"
+            data-rodada-aberta='{{ [sala.rodada, questao.id, questao.tema, questao.dificuldade, questao.enunciado, questao.alternativas] | tojson }}'>
         {{ csrf_input(csrf) }}
         {% for alternativa in questao.alternativas %}
           <label class="alternativa"><input type="radio" name="alternativa" value="{{ loop.index0 }}" required><span>{{ 'ABCD'[loop.index0] }}. {{ alternativa }}</span></label>
@@ -47,8 +48,13 @@
     {% endif %}
   </article>
 
-  <aside class="painel placar-sala">
+  <aside class="painel placar-sala" data-placar-sala>
     <h2>Placar</h2>
+    <section class="ficha" aria-label="Meu desempenho nesta partida">
+      <div><span>Acertos</span><strong>{{ desempenho_partida.percentual }}%</strong></div>
+      <div><span>Erros</span><strong>{{ (100 - desempenho_partida.percentual) if desempenho_partida.total else 0 }}%</strong></div>
+      <div><span>Respostas</span><strong>{{ desempenho_partida.total }}</strong></div>
+    </section>
     <div class="lista-placar">
       {% for participante in participantes %}
         <div><span>{{ participante.nome }}</span><strong>{{ participante.pontos }} pts</strong><small>{{ 'Respondeu' if participante.respondeu else 'Aguardando' }}</small></div>

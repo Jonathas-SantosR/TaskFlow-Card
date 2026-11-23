@@ -222,6 +222,7 @@ class ServicoSalas(ServicoBase):
             "questao": questao,
             "participantes": participantes,
             "minha_resposta": minha_resposta,
+            "desempenho_partida": self.repositorio.salas.desempenho_partida(sala.id, aluno.id),
             "pode_responder": (
                 sala.status == "ABERTA" and len(participantes) >= 2 and minha_resposta is None
             ),
